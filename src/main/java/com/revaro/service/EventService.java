@@ -213,12 +213,11 @@ public class EventService {
             String url = "https://nominatim.openstreetmap.org/search?q=" + encoded + "&format=json&limit=1";
             java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
                     new java.net.URL(url).openConnection();
-            conn.setRequestProperty("User-Agent", "Revaro/1.0 (automotive events platform)");
+            conn.setRequestProperty("User-Agent", "Revaro/1.0");
             conn.setConnectTimeout(3000);
             conn.setReadTimeout(3000);
             if (conn.getResponseCode() == 200) {
                 String body = new String(conn.getInputStream().readAllBytes());
-                // Simple JSON parse — extract lat/lon without a library
                 if (body.contains(""lat"")) {
                     double lat = Double.parseDouble(body.split(""lat":"")[1].split(""")[0]);
                     double lon = Double.parseDouble(body.split(""lon":"")[1].split(""")[0]);
@@ -227,7 +226,6 @@ public class EventService {
                 }
             }
         } catch (Exception e) {
-            // Geocoding is best-effort — don't fail the save
             System.err.println("Geocoding failed for " + city + ": " + e.getMessage());
         }
     }
