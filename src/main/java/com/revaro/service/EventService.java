@@ -1,6 +1,7 @@
 package com.revaro.service;
 
 import com.revaro.dto.EventDto;
+import com.revaro.util.GeocodingUtil;
 import java.util.List;
 import com.revaro.entity.Event;
 import com.revaro.entity.User;
@@ -30,14 +31,17 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final RsvpRepository rsvpRepository;
+    private final GeocodingUtil geocodingUtil;
     private final FileUploadUtil fileUploadUtil;
 
     public EventService(EventRepository eventRepository,
                         RsvpRepository rsvpRepository,
-                        FileUploadUtil fileUploadUtil) {
+                        FileUploadUtil fileUploadUtil,
+                        GeocodingUtil geocodingUtil) {
         this.eventRepository = eventRepository;
         this.rsvpRepository = rsvpRepository;
         this.fileUploadUtil = fileUploadUtil;
+        this.geocodingUtil = geocodingUtil;
     }
 
     // ── Create ────────────────────────────────────────────────────────────────
@@ -151,6 +155,7 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public Page<Event> findEvents(String query, String state, String type, String sort, int page) {
+        LocalDateTime now = LocalDateTime.now();
         Pageable pageable = buildPageable(sort, page);
 
         boolean hasQuery = query != null && !query.isBlank();
@@ -164,20 +169,22 @@ public class EventService {
             try {
                 eventType = EventType.valueOf(type);
             } catch (IllegalArgumentException e) {
-                events = eventRepository.findUpcomingEventsAllStatuses(pageable);
+                events = eventRepository.findUpcomingEvents(now, pageable);
                 return events.map(this::hydrateEvent);
             }
             if (hasQuery) {
-                events = eventRepository.searchEventsByType(query, eventType, pageable);
+                events = eventRepository.searchEventsByType(query, eventType, now, pageable);
             } else {
-                events = eventRepository.findByEventType(eventType, pageable);
+                events = eventRepository.findByEventType(eventType, now, pageable);
             }
         } else if (hasState && !hasQuery) {
-            events = eventRepository.findByState(state, pageable);
+            events = eventRepository.findByState(state, now, pageable);
         } else if (hasQuery) {
+            // Search includes past events so people can find history
             events = eventRepository.searchEvents(query, pageable);
         } else {
-            events = eventRepository.findUpcomingEventsAllStatuses(pageable);
+            // Default feed: upcoming only
+            events = eventRepository.findUpcomingEvents(now, pageable);
         }
 
         return events.map(this::hydrateEvent);
@@ -198,6 +205,14 @@ public class EventService {
         event.setSourceType(dto.getSourceType());
         if (dto.getStatus() != null) {
             event.setStatus(dto.getStatus());
+        }
+        // Geocode city+state -> lat/lng for distance sorting
+        if (dto.getCity() != null && !dto.getCity().isBlank()) {
+            double[] coords = geocodingUtil.geocode(dto.getCity(), dto.getState());
+            if (coords != null) {
+                event.setLatitude(coords[0]);
+                event.setLongitude(coords[1]);
+            }
         }
     }
 

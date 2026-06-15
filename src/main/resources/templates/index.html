@@ -54,7 +54,7 @@
             </div>
             <div class="col-6 col-md-2">
                 <select class="form-select" name="sort">
-                    <option value="date"     th:selected="${param.sort == null or param.sort == 'date'}">Sort: Soonest</option>
+                    <option value="date"     th:selected="${param.sort == null or param.sort == 'date'}">Sort: Date</option>
                     <option value="newest"   th:selected="${param.sort == 'newest'}">Sort: Newest</option>
                     <option value="distance" th:selected="${param.sort == 'distance'}">Sort: Distance</option>
                 </select>
