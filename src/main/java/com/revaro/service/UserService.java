@@ -47,8 +47,8 @@ public class UserService {
     // ── Register ──────────────────────────────────────────────────────────────
 
     public User register(String username, String email, String rawPassword) {
-        if (userRepository.existsByUsername(username)) {
-            throw new IllegalArgumentException("Username already taken.");
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new IllegalArgumentException("Username already taken — try a different one.");
         }
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already registered.");

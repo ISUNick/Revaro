@@ -40,8 +40,11 @@
                        th:field="*{username}"
                        class="form-control"
                        th:classappend="${#fields.hasErrors('username')} ? 'is-invalid'"
-                       placeholder="3–30 characters"
+                       placeholder="e.g. NickBaf, car_guy99"
                        autocomplete="username"/>
+                <div class="form-text" style="font-size:0.75rem;color:var(--color-text-muted);">
+                    3–30 characters. Letters, numbers, and underscores only. No spaces.
+                </div>
                 <div th:if="${#fields.hasErrors('username')}"
                      class="invalid-feedback" th:errors="*{username}"></div>
             </div>
