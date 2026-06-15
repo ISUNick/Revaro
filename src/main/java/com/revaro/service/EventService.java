@@ -218,12 +218,11 @@ public class EventService {
 
 
     private Pageable buildPageable(String sort, int page) {
-        // For "date" sort we want upcoming first (ascending by date),
-        // for "newest" we want most recently created first.
-        // Past events will naturally appear at the end with ascending date sort.
-        Sort sortOrder = switch (sort != null ? sort : "date") {
-            case "newest"  -> Sort.by("createdAt").descending();
-            default        -> Sort.by("eventDateTime").ascending();
+        Sort sortOrder = switch (sort != null ? sort : "relevance") {
+            case "newest"   -> Sort.by("createdAt").descending();
+            // relevance and distance both use date ascending server-side;
+            // the client-side JS re-sorts by the relevance/distance formula
+            default         -> Sort.by("eventDateTime").ascending();
         };
         return PageRequest.of(Math.max(0, page), PAGE_SIZE, sortOrder);
     }

@@ -54,9 +54,10 @@
             </div>
             <div class="col-6 col-md-2">
                 <select class="form-select" name="sort">
-                    <option value="date"     th:selected="${param.sort == null or param.sort == 'date'}">Sort: Date</option>
-                    <option value="newest"   th:selected="${param.sort == 'newest'}">Sort: Newest</option>
-                    <option value="distance" th:selected="${param.sort == 'distance'}">Sort: Distance</option>
+                    <option value="relevance" th:selected="${param.sort == null or param.sort[0] == 'relevance'}">Sort: Relevance</option>
+                    <option value="date"      th:selected="${param.sort != null and param.sort[0] == 'date'}">Sort: Date</option>
+                    <option value="newest"    th:selected="${param.sort != null and param.sort[0] == 'newest'}">Sort: Newest</option>
+                    <option value="distance"  th:selected="${param.sort != null and param.sort[0] == 'distance'}">Sort: Distance</option>
                 </select>
             </div>
             <div class="col-6 col-md-2 col-lg-1">
@@ -85,7 +86,7 @@
     <div th:if="${events != null and !events.empty}">
         <div th:each="event : ${events}"
              class="event-card"
-             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},data-lng=${event.longitude != null ? event.longitude : ''}">
+             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},data-lng=${event.longitude != null ? event.longitude : ''},data-eventdate=${event.eventDateTime != null ? event.eventDateTime : ''}">
             <div class="event-card-inner">
 
                 <!-- Body -->
@@ -243,75 +244,119 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
+    // Relevance score: lower = more relevant
+    // Formula: days^0.6 * distance^0.5
+    // Events with no location get a big penalty (treated as 999 miles)
+    // Events with no date get sorted last
+    function relevanceScore(card, userLat, userLng, nowMs) {
+        var eventDateStr = card.dataset.eventdate;
+        var lat = parseFloat(card.dataset.lat);
+        var lng = parseFloat(card.dataset.lng);
+
+        // Days until event (negative = past, penalized heavily)
+        var daysUntil = 9999;
+        if (eventDateStr) {
+            var diff = (new Date(eventDateStr).getTime() - nowMs) / (1000 * 60 * 60 * 24);
+            if (diff < 0) return 999999; // Past events go to the very bottom
+            daysUntil = Math.max(0.1, diff); // minimum 0.1 to avoid log(0)
+        }
+
+        // Distance in miles (999 if no coords)
+        var miles = 999;
+        if (!isNaN(lat) && !isNaN(lng) && userLat !== null && userLng !== null) {
+            miles = Math.max(0.1, haversine(userLat, userLng, lat, lng));
+        }
+
+        // Formula: days^0.6 * distance^0.5
+        // Both factors penalize you, but with diminishing returns
+        return Math.pow(daysUntil, 0.6) * Math.pow(miles, 0.5);
+    }
+
     function showDistances(userLat, userLng) {
         var cards = document.querySelectorAll('.event-card');
         cards.forEach(function(card) {
             var lat = parseFloat(card.dataset.lat);
             var lng = parseFloat(card.dataset.lng);
             if (isNaN(lat) || isNaN(lng)) return;
-
             var miles = haversine(userLat, userLng, lat, lng);
             var label = miles < 1 ? '< 1 mi' : Math.round(miles) + ' mi';
-
             var distEl = card.querySelector('.event-distance-label');
             if (distEl) distEl.textContent = '· ' + label;
         });
     }
 
-    function sortByDistance(userLat, userLng) {
+    function sortCards(mode, userLat, userLng) {
         var feed = document.querySelector('.event-card') && document.querySelector('.event-card').parentElement;
         if (!feed) return;
         var cards = Array.from(feed.querySelectorAll('.event-card'));
-        cards.sort(function(a, b) {
-            var aLat = parseFloat(a.dataset.lat), aLng = parseFloat(a.dataset.lng);
-            var bLat = parseFloat(b.dataset.lat), bLng = parseFloat(b.dataset.lng);
-            if (isNaN(aLat) || isNaN(aLng)) return 1;
-            if (isNaN(bLat) || isNaN(bLng)) return -1;
-            return haversine(userLat, userLng, aLat, aLng) - haversine(userLat, userLng, bLat, bLng);
-        });
+        var nowMs = Date.now();
+
+        if (mode === 'relevance') {
+            cards.sort(function(a, b) {
+                return relevanceScore(a, userLat, userLng, nowMs) -
+                       relevanceScore(b, userLat, userLng, nowMs);
+            });
+        } else if (mode === 'distance') {
+            if (userLat === null || userLng === null) return;
+            cards.sort(function(a, b) {
+                var aLat = parseFloat(a.dataset.lat), aLng = parseFloat(a.dataset.lng);
+                var bLat = parseFloat(b.dataset.lat), bLng = parseFloat(b.dataset.lng);
+                if (isNaN(aLat) || isNaN(aLng)) return 1;
+                if (isNaN(bLat) || isNaN(bLng)) return -1;
+                return haversine(userLat, userLng, aLat, aLng) - haversine(userLat, userLng, bLat, bLng);
+            });
+        }
+
         cards.forEach(function(c) { feed.appendChild(c); });
     }
 
     var urlParams = new URLSearchParams(window.location.search);
-    var isDistanceSort = urlParams.get('sort') === 'distance';
+    var currentSort = urlParams.get('sort') || 'relevance';
+    var needsLocation = (currentSort === 'relevance' || currentSort === 'distance');
+
     var cachedLat = parseFloat(localStorage.getItem('revaro_lat'));
     var cachedLng = parseFloat(localStorage.getItem('revaro_lng'));
+    var hasCache = !isNaN(cachedLat) && !isNaN(cachedLng);
 
-    // If we have cached coords, show distances immediately
-    if (!isNaN(cachedLat) && !isNaN(cachedLng)) {
+    // Apply immediately with cached coords if available
+    if (hasCache) {
         showDistances(cachedLat, cachedLng);
-        if (isDistanceSort) sortByDistance(cachedLat, cachedLng);
+        sortCards(currentSort, cachedLat, cachedLng);
+    } else if (currentSort === 'relevance') {
+        // No location — still sort by relevance using time only (distance = 999 for all)
+        sortCards('relevance', null, null);
     }
 
-    // Always try to get fresh location
-    if (navigator.geolocation) {
+    // Always refresh location in background
+    if (navigator.geolocation && needsLocation) {
         navigator.geolocation.getCurrentPosition(function(pos) {
             var lat = pos.coords.latitude;
             var lng = pos.coords.longitude;
             localStorage.setItem('revaro_lat', lat);
             localStorage.setItem('revaro_lng', lng);
             showDistances(lat, lng);
-            if (isDistanceSort) sortByDistance(lat, lng);
+            sortCards(currentSort, lat, lng);
         }, function() {
-            // Permission denied — distances just won't show
+            // Denied — sort by time only for relevance
+            if (currentSort === 'relevance' && !hasCache) {
+                sortCards('relevance', null, null);
+            }
         });
     }
 
-    // Distance sort: intercept form submit to trigger geolocation first
+    // Intercept distance/relevance sort form submit to ensure we have location
     var sortSelect = document.querySelector('select[name="sort"]');
     if (sortSelect) {
         sortSelect.addEventListener('change', function() {
-            if (this.value !== 'distance') return;
+            var val = this.value;
+            if (val !== 'distance' && val !== 'relevance') return;
+            var lat = parseFloat(localStorage.getItem('revaro_lat'));
+            var lng = parseFloat(localStorage.getItem('revaro_lng'));
+            if (!isNaN(lat) && !isNaN(lng)) return; // Already have location
             var form = this.closest('form');
             form.addEventListener('submit', function(e) {
-                if (sortSelect.value !== 'distance') return;
-                // If we already have location cached, just submit
-                var lat = parseFloat(localStorage.getItem('revaro_lat'));
-                var lng = parseFloat(localStorage.getItem('revaro_lng'));
-                if (!isNaN(lat) && !isNaN(lng)) return;
-                // Otherwise get it first
+                if (!navigator.geolocation) return;
                 e.preventDefault();
-                if (!navigator.geolocation) { form.submit(); return; }
                 navigator.geolocation.getCurrentPosition(function(pos) {
                     localStorage.setItem('revaro_lat', pos.coords.latitude);
                     localStorage.setItem('revaro_lng', pos.coords.longitude);
