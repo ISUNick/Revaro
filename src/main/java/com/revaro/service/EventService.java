@@ -120,10 +120,19 @@ public class EventService {
 
     /**
      * Public method to hydrate a list of events with RSVP counts.
-     * Used by controllers that load events directly from the repository.
      */
     @Transactional(readOnly = true)
     public List<Event> hydrateEvents(List<Event> events) {
+        events.forEach(this::hydrateEvent);
+        return events;
+    }
+
+    /**
+     * Load and hydrate events for a user in a single transaction.
+     */
+    @Transactional(readOnly = true)
+    public List<Event> findByCreatorHydrated(com.revaro.entity.User user) {
+        List<Event> events = eventRepository.findByCreatorOrderByCreatedAtDesc(user);
         events.forEach(this::hydrateEvent);
         return events;
     }

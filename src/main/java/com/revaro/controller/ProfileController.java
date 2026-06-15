@@ -36,8 +36,7 @@ public class ProfileController {
         model.addAttribute("profileUser", user);
         model.addAttribute("revPoints", userService.calculateRevPoints(user));
         model.addAttribute("eventCount", userService.countEventsForUser(user));
-        model.addAttribute("profileEvents",
-                eventService.hydrateEvents(eventRepository.findByCreatorOrderByCreatedAtDesc(user)));
+        model.addAttribute("profileEvents", eventService.findByCreatorHydrated(user));
         return "user/profile";
     }
 
@@ -85,8 +84,7 @@ public class ProfileController {
     @PreAuthorize("isAuthenticated()")
     public String myEvents(@AuthenticationPrincipal UserDetailsImpl principal, Model model) {
         User user = userService.findById(principal.getUser().getId()).orElseThrow();
-        model.addAttribute("events",
-                eventRepository.findByCreatorOrderByCreatedAtDesc(user));
+        model.addAttribute("events", eventService.findByCreatorHydrated(user));
         return "user/my-events";
     }
 }
