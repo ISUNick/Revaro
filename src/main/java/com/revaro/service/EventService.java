@@ -1,6 +1,11 @@
 package com.revaro.service;
 
 import com.revaro.dto.EventDto;
+import com.revaro.entity.Report;
+import com.revaro.enums.ReportStatus;
+import com.revaro.enums.ReportType;
+import com.revaro.repository.ReportRepository;
+import com.revaro.util.ProfanityFilter;
 import com.revaro.util.GeocodingUtil;
 import java.util.List;
 import com.revaro.entity.Event;
@@ -32,6 +37,8 @@ public class EventService {
     private final EventRepository eventRepository;
     private final RsvpRepository rsvpRepository;
     private final GeocodingUtil geocodingUtil;
+    private final ReportRepository reportRepository;
+    private final ProfanityFilter profanityFilter;
     private final FileUploadUtil fileUploadUtil;
 
     public EventService(EventRepository eventRepository,
@@ -63,7 +70,18 @@ public class EventService {
             event.setOrganizerName(dto.getOrganizerName());
         }
 
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        // Auto-report if profanity was found
+        if (flagged) {
+            Report report = new Report();
+            report.setReporter(creator);
+            report.setReportType(ReportType.EVENT);
+            report.setReportedEvent(saved);
+            report.setReason("Auto-flagged: event content contained filtered language");
+            report.setStatus(ReportStatus.PENDING);
+            reportRepository.save(report);
+        }
+        return saved;
     }
 
     // ── Update ────────────────────────────────────────────────────────────────
@@ -193,8 +211,14 @@ public class EventService {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void applyDto(Event event, EventDto dto) {
-        event.setTitle(dto.getTitle());
-        event.setDescription(dto.getDescription());
+        // Filter profanity from title and description
+        String title = profanityFilter.filter(dto.getTitle());
+        String description = profanityFilter.filter(dto.getDescription());
+        boolean flagged = profanityFilter.containsProfanity(dto.getTitle())
+                       || profanityFilter.containsProfanity(dto.getDescription());
+
+        event.setTitle(title);
+        event.setDescription(description);
         event.setEventType(dto.getEventType());
         event.setEventDateTime(dto.getEventDateTime());
         event.setCity(dto.getCity());

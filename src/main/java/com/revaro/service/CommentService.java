@@ -3,9 +3,14 @@ package com.revaro.service;
 import com.revaro.entity.Comment;
 import com.revaro.entity.CommentLike;
 import com.revaro.entity.Event;
+import com.revaro.entity.Report;
 import com.revaro.entity.User;
+import com.revaro.enums.ReportStatus;
+import com.revaro.enums.ReportType;
 import com.revaro.repository.CommentLikeRepository;
 import com.revaro.repository.CommentRepository;
+import com.revaro.repository.ReportRepository;
+import com.revaro.util.ProfanityFilter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,11 +23,17 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
+    private final ReportRepository reportRepository;
+    private final ProfanityFilter profanityFilter;
 
     public CommentService(CommentRepository commentRepository,
-                          CommentLikeRepository commentLikeRepository) {
+                          CommentLikeRepository commentLikeRepository,
+                          ReportRepository reportRepository,
+                          ProfanityFilter profanityFilter) {
         this.commentRepository = commentRepository;
         this.commentLikeRepository = commentLikeRepository;
+        this.reportRepository = reportRepository;
+        this.profanityFilter = profanityFilter;
     }
 
     // ── Comments ──────────────────────────────────────────────────────────────
@@ -34,8 +45,24 @@ public class CommentService {
         if (content.length() > 2000) {
             throw new IllegalArgumentException("Comment must be under 2000 characters.");
         }
-        Comment comment = new Comment(user, event, content.trim());
-        return commentRepository.save(comment);
+
+        // Filter profanity — replace bad words with asterisks
+        ProfanityFilter.FilterResult result = profanityFilter.filterAndFlag(content.trim());
+        Comment comment = new Comment(user, event, result.filtered());
+        comment = commentRepository.save(comment);
+
+        // Auto-report if profanity was detected
+        if (result.wasFlagged()) {
+            Report report = new Report();
+            report.setReporter(user); // system reports on behalf of poster
+            report.setReportType(ReportType.COMMENT);
+            report.setReportedComment(comment);
+            report.setReason("Auto-flagged: comment contained filtered language");
+            report.setStatus(ReportStatus.PENDING);
+            reportRepository.save(report);
+        }
+
+        return comment;
     }
 
     public void deleteComment(Long commentId, User requestingUser) {
@@ -61,9 +88,6 @@ public class CommentService {
 
     // ── Likes ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Toggle like on a comment. Returns true if now liked, false if unliked.
-     */
     public boolean toggleLike(User user, Comment comment) {
         Optional<CommentLike> existing =
                 commentLikeRepository.findByUserAndComment(user, comment);

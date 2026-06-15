@@ -185,6 +185,73 @@ public class AdminController {
         return "admin/reports";
     }
 
+    @PostMapping("/reports/{id}/dismiss")
+    public String dismissReport(@PathVariable Long id,
+                                @AuthenticationPrincipal UserDetailsImpl principal,
+                                RedirectAttributes redirectAttributes) {
+        reportRepository.findById(id).ifPresent(report -> {
+            report.setStatus(ReportStatus.DISMISSED);
+            report.setReviewedBy(principal.getUser());
+            report.setReviewedAt(java.time.LocalDateTime.now());
+            reportRepository.save(report);
+        });
+        redirectAttributes.addFlashAttribute("successMessage", "Report dismissed.");
+        return "redirect:/admin/reports";
+    }
+
+    @PostMapping("/reports/{id}/delete-content")
+    public String deleteReportedContent(@PathVariable Long id,
+                                        @RequestParam String action,
+                                        @AuthenticationPrincipal UserDetailsImpl principal,
+                                        RedirectAttributes redirectAttributes) {
+        Report report = reportRepository.findById(id).orElse(null);
+        if (report == null) { redirectAttributes.addFlashAttribute("errorMessage", "Report not found."); return "redirect:/admin/reports"; }
+
+        try {
+            switch (action) {
+                case "delete-event" -> {
+                    if (report.getReportedEvent() != null)
+                        eventService.deleteEvent(report.getReportedEvent().getId(), principal.getUser());
+                }
+                case "delete-comment" -> {
+                    if (report.getReportedComment() != null)
+                        commentRepository.deleteById(report.getReportedComment().getId());
+                }
+                case "delete-user" -> {
+                    User target = report.getReportedUser() != null ? report.getReportedUser()
+                            : report.getReportedComment() != null ? report.getReportedComment().getUser()
+                            : report.getReportedEvent() != null ? report.getReportedEvent().getCreator() : null;
+                    if (target != null && !target.getId().equals(principal.getUser().getId()))
+                        userRepository.delete(target);
+                }
+                case "delete-user-and-event" -> {
+                    if (report.getReportedEvent() != null) {
+                        User creator = report.getReportedEvent().getCreator();
+                        eventService.deleteEvent(report.getReportedEvent().getId(), principal.getUser());
+                        if (creator != null && !creator.getId().equals(principal.getUser().getId()))
+                            userRepository.delete(creator);
+                    }
+                }
+                case "delete-user-and-comment" -> {
+                    if (report.getReportedComment() != null) {
+                        User author = report.getReportedComment().getUser();
+                        commentRepository.deleteById(report.getReportedComment().getId());
+                        if (author != null && !author.getId().equals(principal.getUser().getId()))
+                            userRepository.delete(author);
+                    }
+                }
+            }
+            report.setStatus(ReportStatus.REVIEWED);
+            report.setReviewedBy(principal.getUser());
+            report.setReviewedAt(java.time.LocalDateTime.now());
+            reportRepository.save(report);
+            redirectAttributes.addFlashAttribute("successMessage", "Action taken successfully.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Error: " + e.getMessage());
+        }
+        return "redirect:/admin/reports";
+    }
+
     @PostMapping("/reports/{id}/review")
     public String reviewReport(@PathVariable Long id,
                                @RequestParam String newStatus,
