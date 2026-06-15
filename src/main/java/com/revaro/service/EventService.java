@@ -200,35 +200,8 @@ public class EventService {
         if (dto.getStatus() != null) {
             event.setStatus(dto.getStatus());
         }
-        // Geocode city+state to lat/lng for distance sorting
-        if (dto.getCity() != null && !dto.getCity().isBlank()) {
-            geocodeLocation(event, dto.getCity(), dto.getState());
-        }
     }
 
-    private void geocodeLocation(Event event, String city, String state) {
-        try {
-            String query = city + (state != null ? ", " + state : "") + ", USA";
-            String encoded = java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8);
-            String url = "https://nominatim.openstreetmap.org/search?q=" + encoded + "&format=json&limit=1";
-            java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
-                    new java.net.URL(url).openConnection();
-            conn.setRequestProperty("User-Agent", "Revaro/1.0");
-            conn.setConnectTimeout(3000);
-            conn.setReadTimeout(3000);
-            if (conn.getResponseCode() == 200) {
-                String body = new String(conn.getInputStream().readAllBytes());
-                if (body.contains(""lat"")) {
-                    double lat = Double.parseDouble(body.split(""lat":"")[1].split(""")[0]);
-                    double lon = Double.parseDouble(body.split(""lon":"")[1].split(""")[0]);
-                    event.setLatitude(lat);
-                    event.setLongitude(lon);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Geocoding failed for " + city + ": " + e.getMessage());
-        }
-    }
 
     private Pageable buildPageable(String sort, int page) {
         // For "date" sort we want upcoming first (ascending by date),
