@@ -21,13 +21,10 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findByCreatorOrderByCreatedAtDesc(User creator);
     Page<Event> findByStatus(EventStatus status, Pageable pageable);
 
-    // ── Homepage feed — all statuses (cancelled/postponed show with banners) ──
+    // ── Homepage feed — all statuses, no date filter ──────────────────────────
 
-    // All events — upcoming first, then past (sorted by date asc means past ones were already shown first;
-    // we use a CASE to push past events to the bottom)
     @Query("SELECT e FROM Event e")
-    Page<Event> findUpcomingEventsAllStatuses(@Param("now") LocalDateTime now,
-                                              Pageable pageable);
+    Page<Event> findUpcomingEventsAllStatuses(Pageable pageable);
 
     @Query("""
             SELECT e FROM Event e
@@ -38,17 +35,10 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                 OR LOWER(COALESCE(e.state,'')) LIKE LOWER(CONCAT('%', :q, '%'))
             )
             """)
-    Page<Event> searchEvents(@Param("q") String query,
-                             @Param("now") LocalDateTime now,
-                             Pageable pageable);
+    Page<Event> searchEvents(@Param("q") String query, Pageable pageable);
 
-    @Query("""
-            SELECT e FROM Event e
-            WHERE e.eventType = :type
-            """)
-    Page<Event> findByEventType(@Param("type") EventType type,
-                                @Param("now") LocalDateTime now,
-                                Pageable pageable);
+    @Query("SELECT e FROM Event e WHERE e.eventType = :type")
+    Page<Event> findByEventType(@Param("type") EventType type, Pageable pageable);
 
     @Query("""
             SELECT e FROM Event e
@@ -62,24 +52,18 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             """)
     Page<Event> searchEventsByType(@Param("q") String query,
                                    @Param("type") EventType type,
-                                   @Param("now") LocalDateTime now,
                                    Pageable pageable);
 
-    @Query("""
-            SELECT e FROM Event e
-            WHERE LOWER(COALESCE(e.state,'')) = LOWER(:state)
-            """)
-    Page<Event> findByState(@Param("state") String state,
-                            @Param("now") LocalDateTime now,
-                            Pageable pageable);
+    @Query("SELECT e FROM Event e WHERE LOWER(COALESCE(e.state,'')) = LOWER(:state)")
+    Page<Event> findByState(@Param("state") String state, Pageable pageable);
 
-    // ── Keep old active-only queries for backward compat ──
+    // ── Keep for backward compat ───────────────────────────────────────────────
     @Query("SELECT e FROM Event e WHERE e.status = :status AND e.eventDateTime >= :now ORDER BY e.eventDateTime ASC")
     Page<Event> findUpcomingEvents(@Param("status") EventStatus status,
                                    @Param("now") LocalDateTime now,
                                    Pageable pageable);
 
-    // ── Admin ──────────────────────────────────────────────────────────────
+    // ── Admin ──────────────────────────────────────────────────────────────────
     Page<Event> findAllByOrderByCreatedAtDesc(Pageable pageable);
     long countByStatus(EventStatus status);
     long countByCreator(User creator);

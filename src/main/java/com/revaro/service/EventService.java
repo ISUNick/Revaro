@@ -151,7 +151,6 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public Page<Event> findEvents(String query, String state, String type, String sort, int page) {
-        LocalDateTime now = LocalDateTime.now();
         Pageable pageable = buildPageable(sort, page);
 
         boolean hasQuery = query != null && !query.isBlank();
@@ -165,20 +164,20 @@ public class EventService {
             try {
                 eventType = EventType.valueOf(type);
             } catch (IllegalArgumentException e) {
-                events = eventRepository.findUpcomingEventsAllStatuses(now, pageable);
+                events = eventRepository.findUpcomingEventsAllStatuses(pageable);
                 return events.map(this::hydrateEvent);
             }
             if (hasQuery) {
-                events = eventRepository.searchEventsByType(query, eventType, now, pageable);
+                events = eventRepository.searchEventsByType(query, eventType, pageable);
             } else {
-                events = eventRepository.findByEventType(eventType, now, pageable);
+                events = eventRepository.findByEventType(eventType, pageable);
             }
         } else if (hasState && !hasQuery) {
-            events = eventRepository.findByState(state, now, pageable);
+            events = eventRepository.findByState(state, pageable);
         } else if (hasQuery) {
-            events = eventRepository.searchEvents(query, now, pageable);
+            events = eventRepository.searchEvents(query, pageable);
         } else {
-            events = eventRepository.findUpcomingEventsAllStatuses(now, pageable);
+            events = eventRepository.findUpcomingEventsAllStatuses(pageable);
         }
 
         return events.map(this::hydrateEvent);
