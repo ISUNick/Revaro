@@ -216,6 +216,7 @@ public class AdminController {
                 case "delete-comment" -> {
                     if (report.getReportedComment() != null)
                         commentRepository.deleteById(report.getReportedComment().getId());
+                    report.setReportedComment(null);
                 }
                 case "delete-user" -> {
                     User target = report.getReportedUser() != null ? report.getReportedUser()
@@ -223,6 +224,7 @@ public class AdminController {
                             : report.getReportedEvent() != null ? report.getReportedEvent().getCreator() : null;
                     if (target != null && !target.getId().equals(principal.getUser().getId()))
                         userRepository.delete(target);
+                    report.setReportedUser(null);
                 }
                 case "delete-user-and-event" -> {
                     if (report.getReportedEvent() != null) {
@@ -231,6 +233,8 @@ public class AdminController {
                         if (creator != null && !creator.getId().equals(principal.getUser().getId()))
                             userRepository.delete(creator);
                     }
+                    report.setReportedEvent(null);
+                    report.setReportedUser(null);
                 }
                 case "delete-user-and-comment" -> {
                     if (report.getReportedComment() != null) {
@@ -239,6 +243,8 @@ public class AdminController {
                         if (author != null && !author.getId().equals(principal.getUser().getId()))
                             userRepository.delete(author);
                     }
+                    report.setReportedComment(null);
+                    report.setReportedUser(null);
                 }
             }
             report.setStatus(ReportStatus.REVIEWED);
