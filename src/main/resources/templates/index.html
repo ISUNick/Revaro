@@ -144,6 +144,7 @@
                         <span th:if="${event.city != null}" class="event-meta-item">
                             <i class="bi bi-geo-alt-fill"></i>
                             <span th:text="${event.city + (event.state != null ? ', ' + event.state : '')}">City</span>
+                            <span class="event-distance-label" style="color:var(--color-primary-light);font-weight:600;margin-left:0.25rem;"></span>
                         </span>
                     </div>
 
@@ -165,8 +166,9 @@
                             View Event <i class="bi bi-arrow-right"></i>
                         </a>
                         <span th:if="${event.createdAt != null}"
-                              style="font-size: 0.72rem; color: var(--color-text-muted);"
-                              th:text="${#temporals.format(event.createdAt, 'MMM d')}">Jan 1</span>
+                              style="font-size: 0.72rem; color: var(--color-text-muted);">
+                            Posted: <span th:text="${#temporals.format(event.createdAt, 'MMM d')}">Jan 1</span>
+                        </span>
                     </div>
                 </div>
 
@@ -230,94 +232,92 @@
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script>
-// Distance sort — activates when user selects "Sort: Distance"
 (function() {
-    const sortSelect = document.querySelector('select[name="sort"]');
-    if (!sortSelect) return;
+    function haversine(lat1, lng1, lat2, lng2) {
+        var R = 3958.8;
+        var dLat = (lat2 - lat1) * Math.PI / 180;
+        var dLng = (lng2 - lng1) * Math.PI / 180;
+        var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
 
-    sortSelect.addEventListener('change', function() {
-        if (this.value !== 'distance') return;
-        // Intercept form submit and do geolocation first
-        const form = this.closest('form');
-        form.addEventListener('submit', function(e) {
-            if (sortSelect.value !== 'distance') return;
-            e.preventDefault();
-            if (!navigator.geolocation) {
-                form.submit();
-                return;
-            }
-            navigator.geolocation.getCurrentPosition(function(pos) {
-                // Store user coords in hidden inputs
-                let latInput = form.querySelector('input[name="userLat"]');
-                let lngInput = form.querySelector('input[name="userLng"]');
-                if (!latInput) {
-                    latInput = document.createElement('input');
-                    latInput.type = 'hidden';
-                    latInput.name = 'userLat';
-                    form.appendChild(latInput);
-                }
-                if (!lngInput) {
-                    lngInput = document.createElement('input');
-                    lngInput.type = 'hidden';
-                    lngInput.name = 'userLng';
-                    form.appendChild(lngInput);
-                }
-                latInput.value = pos.coords.latitude;
-                lngInput.value = pos.coords.longitude;
-                form.submit();
-            }, function() {
-                form.submit(); // permission denied — just submit normally
-            });
-        }, { once: true });
-    });
+    function showDistances(userLat, userLng) {
+        var cards = document.querySelectorAll('.event-card');
+        cards.forEach(function(card) {
+            var lat = parseFloat(card.dataset.lat);
+            var lng = parseFloat(card.dataset.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
 
-    // If distance sort is active and we have coords, sort cards client-side
-    const urlParams = new URLSearchParams(window.location.search);
-    const userLat = parseFloat(urlParams.get('userLat'));
-    const userLng = parseFloat(urlParams.get('userLng'));
+            var miles = haversine(userLat, userLng, lat, lng);
+            var label = miles < 1 ? '< 1 mi' : Math.round(miles) + ' mi';
 
-    if (urlParams.get('sort') === 'distance' && !isNaN(userLat) && !isNaN(userLng)) {
-        const feed = document.querySelector('.event-card')?.parentElement;
+            var distEl = card.querySelector('.event-distance-label');
+            if (distEl) distEl.textContent = '· ' + label;
+        });
+    }
+
+    function sortByDistance(userLat, userLng) {
+        var feed = document.querySelector('.event-card') && document.querySelector('.event-card').parentElement;
         if (!feed) return;
-        const cards = Array.from(feed.querySelectorAll('.event-card'));
-
-        function haversine(lat1, lng1, lat2, lng2) {
-            const R = 3958.8; // miles
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2)**2 +
-                      Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
-                      Math.sin(dLng/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        }
-
+        var cards = Array.from(feed.querySelectorAll('.event-card'));
         cards.sort(function(a, b) {
-            const aLat = parseFloat(a.dataset.lat);
-            const aLng = parseFloat(a.dataset.lng);
-            const bLat = parseFloat(b.dataset.lat);
-            const bLng = parseFloat(b.dataset.lng);
-            // Events without coordinates go to the end
+            var aLat = parseFloat(a.dataset.lat), aLng = parseFloat(a.dataset.lng);
+            var bLat = parseFloat(b.dataset.lat), bLng = parseFloat(b.dataset.lng);
             if (isNaN(aLat) || isNaN(aLng)) return 1;
             if (isNaN(bLat) || isNaN(bLng)) return -1;
-            return haversine(userLat, userLng, aLat, aLng) -
-                   haversine(userLat, userLng, bLat, bLng);
+            return haversine(userLat, userLng, aLat, aLng) - haversine(userLat, userLng, bLat, bLng);
         });
+        cards.forEach(function(c) { feed.appendChild(c); });
+    }
 
-        cards.forEach(card => feed.appendChild(card));
+    var urlParams = new URLSearchParams(window.location.search);
+    var isDistanceSort = urlParams.get('sort') === 'distance';
+    var cachedLat = parseFloat(localStorage.getItem('revaro_lat'));
+    var cachedLng = parseFloat(localStorage.getItem('revaro_lng'));
 
-        // Add distance label to each card
-        cards.forEach(function(card) {
-            const lat = parseFloat(card.dataset.lat);
-            const lng = parseFloat(card.dataset.lng);
-            if (isNaN(lat) || isNaN(lng)) return;
-            const miles = haversine(userLat, userLng, lat, lng);
-            const footer = card.querySelector('.event-card-footer');
-            if (footer) {
-                const dist = document.createElement('span');
-                dist.style.cssText = 'font-size:0.72rem;color:var(--color-primary-light);font-weight:600;';
-                dist.textContent = miles < 1 ? '< 1 mi away' : Math.round(miles) + ' mi away';
-                footer.appendChild(dist);
-            }
+    // If we have cached coords, show distances immediately
+    if (!isNaN(cachedLat) && !isNaN(cachedLng)) {
+        showDistances(cachedLat, cachedLng);
+        if (isDistanceSort) sortByDistance(cachedLat, cachedLng);
+    }
+
+    // Always try to get fresh location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var lat = pos.coords.latitude;
+            var lng = pos.coords.longitude;
+            localStorage.setItem('revaro_lat', lat);
+            localStorage.setItem('revaro_lng', lng);
+            showDistances(lat, lng);
+            if (isDistanceSort) sortByDistance(lat, lng);
+        }, function() {
+            // Permission denied — distances just won't show
+        });
+    }
+
+    // Distance sort: intercept form submit to trigger geolocation first
+    var sortSelect = document.querySelector('select[name="sort"]');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            if (this.value !== 'distance') return;
+            var form = this.closest('form');
+            form.addEventListener('submit', function(e) {
+                if (sortSelect.value !== 'distance') return;
+                // If we already have location cached, just submit
+                var lat = parseFloat(localStorage.getItem('revaro_lat'));
+                var lng = parseFloat(localStorage.getItem('revaro_lng'));
+                if (!isNaN(lat) && !isNaN(lng)) return;
+                // Otherwise get it first
+                e.preventDefault();
+                if (!navigator.geolocation) { form.submit(); return; }
+                navigator.geolocation.getCurrentPosition(function(pos) {
+                    localStorage.setItem('revaro_lat', pos.coords.latitude);
+                    localStorage.setItem('revaro_lng', pos.coords.longitude);
+                    form.submit();
+                }, function() { form.submit(); });
+            }, { once: true });
         });
     }
 })();
