@@ -66,6 +66,12 @@ public class Event {
     @Column(length = 500)
     private String featuredImage;
 
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EventStatus status = EventStatus.ACTIVE;
@@ -153,6 +159,11 @@ public class Event {
 
     public void setGoingCountCache(long count) { this.goingCountCache = count; }
     public void setInterestedCountCache(long count) { this.interestedCountCache = count; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
     public boolean isUpcoming() {
         return eventDateTime != null && eventDateTime.isAfter(LocalDateTime.now());

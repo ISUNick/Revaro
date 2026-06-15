@@ -54,8 +54,9 @@
             </div>
             <div class="col-6 col-md-2">
                 <select class="form-select" name="sort">
-                    <option value="date"   th:selected="${param.sort == null or param.sort == 'date'}">Sort: Date</option>
-                    <option value="newest" th:selected="${param.sort == 'newest'}">Sort: Newest</option>
+                    <option value="date"     th:selected="${param.sort == null or param.sort == 'date'}">Sort: Soonest</option>
+                    <option value="newest"   th:selected="${param.sort == 'newest'}">Sort: Newest</option>
+                    <option value="distance" th:selected="${param.sort == 'distance'}">Sort: Distance</option>
                 </select>
             </div>
             <div class="col-6 col-md-2 col-lg-1">
@@ -82,17 +83,34 @@
 
     <!-- Cards -->
     <div th:if="${events != null and !events.empty}">
-        <div th:each="event : ${events}" class="event-card">
+        <div th:each="event : ${events}"
+             class="event-card"
+             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},data-lng=${event.longitude != null ? event.longitude : ''}">
             <div class="event-card-inner">
 
                 <!-- Body -->
                 <div class="event-card-body">
-                    <!-- Type badge -->
-                    <div>
+                    <!-- Type badge + status banner -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span th:if="${event.eventType != null}"
                               class="event-type-badge"
                               th:classappend="${event.eventType.badgeClass}"
                               th:text="${event.eventType.displayName}">Type</span>
+                        <span th:if="${event.status != null and event.status.name() == 'CANCELLED'}"
+                              class="event-type-badge"
+                              style="background:rgba(239,68,68,0.18);color:#f87171;border:1px solid rgba(239,68,68,0.35);">
+                            ⚠ Cancelled
+                        </span>
+                        <span th:if="${event.status != null and event.status.name() == 'POSTPONED'}"
+                              class="event-type-badge"
+                              style="background:rgba(245,158,11,0.18);color:#fcd34d;border:1px solid rgba(245,158,11,0.35);">
+                            ⏸ Postponed
+                        </span>
+                        <span th:if="${event.status != null and event.status.name() == 'ACTIVE' and event.eventDateTime != null and event.eventDateTime.isBefore(#temporals.createNow())}"
+                              class="event-type-badge"
+                              style="background:rgba(107,114,128,0.18);color:#9ca3af;border:1px solid rgba(107,114,128,0.3);">
+                            ✓ Already Happened
+                        </span>
                     </div>
 
                     <!-- Title -->
@@ -211,5 +229,98 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+// Distance sort — activates when user selects "Sort: Distance"
+(function() {
+    const sortSelect = document.querySelector('select[name="sort"]');
+    if (!sortSelect) return;
+
+    sortSelect.addEventListener('change', function() {
+        if (this.value !== 'distance') return;
+        // Intercept form submit and do geolocation first
+        const form = this.closest('form');
+        form.addEventListener('submit', function(e) {
+            if (sortSelect.value !== 'distance') return;
+            e.preventDefault();
+            if (!navigator.geolocation) {
+                form.submit();
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                // Store user coords in hidden inputs
+                let latInput = form.querySelector('input[name="userLat"]');
+                let lngInput = form.querySelector('input[name="userLng"]');
+                if (!latInput) {
+                    latInput = document.createElement('input');
+                    latInput.type = 'hidden';
+                    latInput.name = 'userLat';
+                    form.appendChild(latInput);
+                }
+                if (!lngInput) {
+                    lngInput = document.createElement('input');
+                    lngInput.type = 'hidden';
+                    lngInput.name = 'userLng';
+                    form.appendChild(lngInput);
+                }
+                latInput.value = pos.coords.latitude;
+                lngInput.value = pos.coords.longitude;
+                form.submit();
+            }, function() {
+                form.submit(); // permission denied — just submit normally
+            });
+        }, { once: true });
+    });
+
+    // If distance sort is active and we have coords, sort cards client-side
+    const urlParams = new URLSearchParams(window.location.search);
+    const userLat = parseFloat(urlParams.get('userLat'));
+    const userLng = parseFloat(urlParams.get('userLng'));
+
+    if (urlParams.get('sort') === 'distance' && !isNaN(userLat) && !isNaN(userLng)) {
+        const feed = document.querySelector('.event-card')?.parentElement;
+        if (!feed) return;
+        const cards = Array.from(feed.querySelectorAll('.event-card'));
+
+        function haversine(lat1, lng1, lat2, lng2) {
+            const R = 3958.8; // miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 +
+                      Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                      Math.sin(dLng/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        cards.sort(function(a, b) {
+            const aLat = parseFloat(a.dataset.lat);
+            const aLng = parseFloat(a.dataset.lng);
+            const bLat = parseFloat(b.dataset.lat);
+            const bLng = parseFloat(b.dataset.lng);
+            // Events without coordinates go to the end
+            if (isNaN(aLat) || isNaN(aLng)) return 1;
+            if (isNaN(bLat) || isNaN(bLng)) return -1;
+            return haversine(userLat, userLng, aLat, aLng) -
+                   haversine(userLat, userLng, bLat, bLng);
+        });
+
+        cards.forEach(card => feed.appendChild(card));
+
+        // Add distance label to each card
+        cards.forEach(function(card) {
+            const lat = parseFloat(card.dataset.lat);
+            const lng = parseFloat(card.dataset.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+            const miles = haversine(userLat, userLng, lat, lng);
+            const footer = card.querySelector('.event-card-footer');
+            if (footer) {
+                const dist = document.createElement('span');
+                dist.style.cssText = 'font-size:0.72rem;color:var(--color-primary-light);font-weight:600;';
+                dist.textContent = miles < 1 ? '< 1 mi away' : Math.round(miles) + ' mi away';
+                footer.appendChild(dist);
+            }
+        });
+    }
+})();
+</script>
 </body>
 </html>

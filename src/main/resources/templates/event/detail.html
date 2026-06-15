@@ -55,6 +55,55 @@
                 <i class="bi bi-arrow-left"></i> Back to events
             </a>
 
+            <!-- Status banner — cancelled or postponed -->
+            <!-- Past event banner -->
+            <div th:if="${event.status != null and event.status.name() == 'ACTIVE' and event.eventDateTime != null and event.eventDateTime.isBefore(#temporals.createNow())}"
+                 style="background:rgba(107,114,128,0.1); border:1px solid rgba(107,114,128,0.3);
+                        border-radius:var(--radius-md); padding:1rem 1.25rem; margin-bottom:1rem;
+                        display:flex; align-items:center; gap:0.75rem;">
+                <i class="bi bi-check-circle" style="color:#9ca3af; font-size:1.1rem; flex-shrink:0;"></i>
+                <div>
+                    <div style="font-weight:700; color:#9ca3af; margin-bottom:0.2rem;">This event has already happened</div>
+                    <div style="font-size:0.875rem; color:var(--color-text-muted);">
+                        You're viewing a past event. Keep an eye out for future editions!
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${event.status != null and event.status.name() == 'CANCELLED'}"
+                 style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35);
+                        border-radius:var(--radius-md); padding:1rem 1.25rem; margin-bottom:1rem;
+                        display:flex; align-items:flex-start; gap:0.75rem;">
+                <i class="bi bi-x-circle-fill" style="color:#f87171; font-size:1.1rem; flex-shrink:0; margin-top:0.1rem;"></i>
+                <div>
+                    <div style="font-weight:700; color:#f87171; margin-bottom:0.2rem;">This event has been cancelled</div>
+                    <div style="font-size:0.875rem; color:var(--color-text-muted);">
+                        Please check the organizer's official page for more information.
+                        <span th:if="${event.officialSourceLink != null and !#strings.isEmpty(event.officialSourceLink)}">
+                            <a th:href="${event.officialSourceLink}" target="_blank"
+                               style="color:#f87171; font-weight:600;">View official site →</a>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${event.status != null and event.status.name() == 'POSTPONED'}"
+                 style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35);
+                        border-radius:var(--radius-md); padding:1rem 1.25rem; margin-bottom:1rem;
+                        display:flex; align-items:flex-start; gap:0.75rem;">
+                <i class="bi bi-clock-history" style="color:#fcd34d; font-size:1.1rem; flex-shrink:0; margin-top:0.1rem;"></i>
+                <div>
+                    <div style="font-weight:700; color:#fcd34d; margin-bottom:0.2rem;">This event has been postponed</div>
+                    <div style="font-size:0.875rem; color:var(--color-text-muted);">
+                        A new date has not been confirmed yet. Check the organizer's official page for updates.
+                        <span th:if="${event.officialSourceLink != null and !#strings.isEmpty(event.officialSourceLink)}">
+                            <a th:href="${event.officialSourceLink}" target="_blank"
+                               style="color:#fcd34d; font-weight:600;">View official site →</a>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Title -->
             <h1 style="font-size:clamp(1.4rem,3vw,2rem); font-weight:800; line-height:1.25;"
                 th:text="${event.title}">Event Title</h1>

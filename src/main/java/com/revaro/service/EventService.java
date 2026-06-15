@@ -153,7 +153,6 @@ public class EventService {
     public Page<Event> findEvents(String query, String state, String type, String sort, int page) {
         LocalDateTime now = LocalDateTime.now();
         Pageable pageable = buildPageable(sort, page);
-        EventStatus active = EventStatus.ACTIVE;
 
         boolean hasQuery = query != null && !query.isBlank();
         boolean hasType  = type  != null && !type.isBlank();
@@ -166,20 +165,20 @@ public class EventService {
             try {
                 eventType = EventType.valueOf(type);
             } catch (IllegalArgumentException e) {
-                events = eventRepository.findUpcomingEvents(active, now, pageable);
+                events = eventRepository.findUpcomingEventsAllStatuses(now, pageable);
                 return events.map(this::hydrateEvent);
             }
             if (hasQuery) {
-                events = eventRepository.searchEventsByType(query, eventType, active, now, pageable);
+                events = eventRepository.searchEventsByType(query, eventType, now, pageable);
             } else {
-                events = eventRepository.findByEventType(eventType, active, now, pageable);
+                events = eventRepository.findByEventType(eventType, now, pageable);
             }
         } else if (hasState && !hasQuery) {
-            events = eventRepository.findByState(state, active, now, pageable);
+            events = eventRepository.findByState(state, now, pageable);
         } else if (hasQuery) {
-            events = eventRepository.searchEvents(query, active, now, pageable);
+            events = eventRepository.searchEvents(query, now, pageable);
         } else {
-            events = eventRepository.findUpcomingEvents(active, now, pageable);
+            events = eventRepository.findUpcomingEventsAllStatuses(now, pageable);
         }
 
         return events.map(this::hydrateEvent);
@@ -201,13 +200,45 @@ public class EventService {
         if (dto.getStatus() != null) {
             event.setStatus(dto.getStatus());
         }
+        // Geocode city+state to lat/lng for distance sorting
+        if (dto.getCity() != null && !dto.getCity().isBlank()) {
+            geocodeLocation(event, dto.getCity(), dto.getState());
+        }
+    }
+
+    private void geocodeLocation(Event event, String city, String state) {
+        try {
+            String query = city + (state != null ? ", " + state : "") + ", USA";
+            String encoded = java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8);
+            String url = "https://nominatim.openstreetmap.org/search?q=" + encoded + "&format=json&limit=1";
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
+                    new java.net.URL(url).openConnection();
+            conn.setRequestProperty("User-Agent", "Revaro/1.0 (automotive events platform)");
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+            if (conn.getResponseCode() == 200) {
+                String body = new String(conn.getInputStream().readAllBytes());
+                // Simple JSON parse — extract lat/lon without a library
+                if (body.contains(""lat"")) {
+                    double lat = Double.parseDouble(body.split(""lat":"")[1].split(""")[0]);
+                    double lon = Double.parseDouble(body.split(""lon":"")[1].split(""")[0]);
+                    event.setLatitude(lat);
+                    event.setLongitude(lon);
+                }
+            }
+        } catch (Exception e) {
+            // Geocoding is best-effort — don't fail the save
+            System.err.println("Geocoding failed for " + city + ": " + e.getMessage());
+        }
     }
 
     private Pageable buildPageable(String sort, int page) {
+        // For "date" sort we want upcoming first (ascending by date),
+        // for "newest" we want most recently created first.
+        // Past events will naturally appear at the end with ascending date sort.
         Sort sortOrder = switch (sort != null ? sort : "date") {
-            case "newest"     -> Sort.by("createdAt").descending();
-            case "attendance" -> Sort.by("createdAt").descending();
-            default           -> Sort.by("eventDateTime").ascending();
+            case "newest"  -> Sort.by("createdAt").descending();
+            default        -> Sort.by("eventDateTime").ascending();
         };
         return PageRequest.of(Math.max(0, page), PAGE_SIZE, sortOrder);
     }

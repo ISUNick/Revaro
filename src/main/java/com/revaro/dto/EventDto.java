@@ -59,6 +59,8 @@ public class EventDto {
 
     // Existing image filename (edit mode — keep if no new upload)
     private String existingImage;
+    private Double latitude;
+    private Double longitude;
 
     // ── Getters & Setters ─────────────────────────────────────────────────────
 
