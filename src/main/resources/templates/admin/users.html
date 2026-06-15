@@ -80,15 +80,28 @@
                     <td style="padding: 0.75rem 1rem; color: var(--color-text-muted); font-size: 0.8rem;"
                         th:unless="${user.createdAt != null}">—</td>
                     <td style="padding: 0.75rem 1rem; text-align: right;">
-                        <form th:action="@{/admin/users/{id}/toggle-admin(id=${user.id})}"
-                              method="post" style="margin: 0; display: inline;">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                            <button type="submit" class="btn btn-sm btn-outline-revaro"
-                                    style="font-size: 0.75rem; padding: 0.2rem 0.6rem;"
-                                    th:text="${user.admin} ? 'Remove Admin' : 'Make Admin'">
-                                Toggle
-                            </button>
-                        </form>
+                        <div class="d-flex gap-2 justify-content-end">
+                            <form th:action="@{/admin/users/{id}/toggle-admin(id=${user.id})}"
+                                  method="post" style="margin: 0;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <button type="submit" class="btn btn-sm btn-outline-revaro"
+                                        style="font-size: 0.75rem; padding: 0.2rem 0.6rem;"
+                                        th:text="${user.admin} ? 'Remove Admin' : 'Make Admin'">Toggle</button>
+                            </form>
+                            <form th:action="@{/admin/users/{id}/delete(id=${user.id})}"
+                                  method="post" style="margin: 0;"
+                                  th:unless="${user.id == currentNavUser?.id}"
+                                  onsubmit="return confirm('Delete user ' + this.dataset.username + '? This will delete all their events and comments too.');"
+                                  th:data-username="${user.username}">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <button type="submit" class="btn btn-sm"
+                                        style="font-size: 0.75rem; padding: 0.2rem 0.6rem;
+                                               background: rgba(239,68,68,0.12); color: #f87171;
+                                               border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm);">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
             </tbody>

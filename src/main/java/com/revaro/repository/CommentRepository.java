@@ -19,6 +19,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     long countByEvent(Event event);
 
+    org.springframework.data.domain.Page<Comment> findAllByOrderByCreatedAtDesc(
+            org.springframework.data.domain.Pageable pageable);
+
     @Query("""
             SELECT c FROM Comment c
             LEFT JOIN c.likes l
