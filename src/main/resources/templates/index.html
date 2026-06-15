@@ -84,11 +84,10 @@
 
     <!-- Cards -->
     <div th:if="${events != null and !events.empty}">
-        <a th:each="event : ${events}"
-           th:href="@{/events/{id}(id=${event.id})}"
-           class="event-card"
-           th:attr="data-lat=${event.latitude != null ? event.latitude : ''},data-lng=${event.longitude != null ? event.longitude : ''},data-eventdate=${event.eventDateTime != null ? event.eventDateTime : ''}"
-           style="text-decoration:none;display:block;color:inherit;">
+        <div th:each="event : ${events}"
+             class="event-card"
+             style="cursor:pointer;"
+             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},data-lng=${event.longitude != null ? event.longitude : ''},data-eventdate=${event.eventDateTime != null ? event.eventDateTime : ''},onclick='window.location='/events/' + ${event.id} + '''">
             <div class="event-card-inner">
 
                 <!-- Body -->
@@ -190,7 +189,7 @@
                 </div>
 
             </div>
-        </a>
+        </div>
     </div>
 
     <!-- Empty state -->
