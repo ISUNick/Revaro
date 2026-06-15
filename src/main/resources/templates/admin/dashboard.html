@@ -16,7 +16,7 @@
 <section class="page-hero">
     <div class="container-xl">
         <h1><i class="bi bi-shield-fill-check me-2" style="color: var(--color-primary-light);"></i>Admin Dashboard</h1>
-        <p class="lead mb-0">Manage events, users, and claim requests.</p>
+        <p class="lead mb-0">Manage events, users, claims, and comments.</p>
     </div>
 </section>
 
@@ -24,40 +24,41 @@
 
     <div th:replace="~{fragments/layout :: flash}"></div>
 
-    <!-- Stats row -->
+    <!-- Stats row — 4 boxes -->
     <div class="row g-3 mb-4">
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
             <div class="revaro-card p-4 text-center">
                 <div style="font-size: 2rem; font-weight: 800; color: var(--color-interested);"
                      th:text="${pendingClaimsCount}">0</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">
-                    Pending Claims
-                </div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Pending Claims</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
             <div class="revaro-card p-4 text-center">
                 <div style="font-size: 2rem; font-weight: 800; color: var(--color-primary-light);"
                      th:text="${totalUsers}">0</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">
-                    Total Users
-                </div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Users</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
             <div class="revaro-card p-4 text-center">
                 <div style="font-size: 2rem; font-weight: 800; color: var(--color-going);"
                      th:text="${totalEvents}">0</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">
-                    Total Events
-                </div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Events</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="revaro-card p-4 text-center">
+                <div style="font-size: 2rem; font-weight: 800; color: #a855f7;"
+                     th:text="${totalComments}">0</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Comments</div>
             </div>
         </div>
     </div>
 
-    <!-- Nav cards -->
+    <!-- Nav cards — 4 cards in 2x2 -->
     <div class="row g-3 mb-4">
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-6">
             <a th:href="@{/admin/claims}" class="revaro-card p-4 d-block text-decoration-none admin-nav-card">
                 <i class="bi bi-patch-check-fill admin-nav-icon" style="color: var(--color-interested);"></i>
                 <div class="admin-nav-label">Claim Requests</div>
@@ -68,21 +69,21 @@
                       th:text="${pendingClaimsCount} + ' pending'">0 pending</span>
             </a>
         </div>
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-6">
             <a th:href="@{/admin/users}" class="revaro-card p-4 d-block text-decoration-none admin-nav-card">
                 <i class="bi bi-people-fill admin-nav-icon" style="color: var(--color-primary-light);"></i>
                 <div class="admin-nav-label">Users</div>
                 <div class="admin-nav-sub">Manage user accounts and roles</div>
             </a>
         </div>
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-6">
             <a th:href="@{/admin/events}" class="revaro-card p-4 d-block text-decoration-none admin-nav-card">
                 <i class="bi bi-calendar3 admin-nav-icon" style="color: var(--color-going);"></i>
                 <div class="admin-nav-label">Events</div>
                 <div class="admin-nav-sub">View and moderate all events</div>
             </a>
-            </div>
-            <div class="col-12 col-md-4">
+        </div>
+        <div class="col-12 col-md-6">
             <a th:href="@{/admin/comments}" class="revaro-card p-4 d-block text-decoration-none admin-nav-card">
                 <i class="bi bi-chat-dots admin-nav-icon" style="color: #a855f7;"></i>
                 <div class="admin-nav-label">Comments</div>
@@ -97,8 +98,7 @@
         <div th:each="claim : ${recentClaims}" class="revaro-card p-3 mb-2">
             <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
                 <div>
-                    <strong style="color: var(--color-text);"
-                            th:text="${claim.requester.username}">user</strong>
+                    <strong style="color: var(--color-text);" th:text="${claim.requester.username}">user</strong>
                     <span style="color: var(--color-text-muted);"> wants to claim </span>
                     <a th:href="@{/events/{id}(id=${claim.event.id})}"
                        style="color: var(--color-primary-light);"
@@ -107,9 +107,7 @@
                          th:if="${claim.createdAt != null}"
                          th:text="${#temporals.format(claim.createdAt, 'MMM d, yyyy h:mm a')}">Date</div>
                 </div>
-                <a th:href="@{/admin/claims}" class="btn btn-outline-revaro btn-sm">
-                    Review
-                </a>
+                <a th:href="@{/admin/claims}" class="btn btn-outline-revaro btn-sm">Review</a>
             </div>
         </div>
     </div>
@@ -122,14 +120,6 @@
     </div>
 
 </div>
-
-<style>
-.admin-nav-card { transition: transform 0.15s, border-color 0.15s; }
-.admin-nav-card:hover { transform: translateY(-2px); border-color: var(--color-primary) !important; }
-.admin-nav-icon { font-size: 1.75rem; display: block; margin-bottom: 0.5rem; }
-.admin-nav-label { font-weight: 700; font-size: 1rem; color: var(--color-text); margin-bottom: 0.2rem; }
-.admin-nav-sub { font-size: 0.8rem; color: var(--color-text-muted); }
-</style>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:replace="~{fragments/layout :: scripts}"></div>

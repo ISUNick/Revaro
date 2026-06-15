@@ -48,6 +48,7 @@ public class AdminController {
         model.addAttribute("pendingClaimsCount", claimRequestService.countPending());
         model.addAttribute("totalUsers", userRepository.count());
         model.addAttribute("totalEvents", eventRepository.count());
+        model.addAttribute("totalComments", commentRepository.count());
         model.addAttribute("recentClaims", claimRequestService.getPendingClaims());
         return "admin/dashboard";
     }
