@@ -86,8 +86,7 @@
     <div th:if="${events != null and !events.empty}">
         <div th:each="event : ${events}"
              class="event-card"
-             style="cursor:pointer;"
-             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},data-lng=${event.longitude != null ? event.longitude : ''},data-eventdate=${event.eventDateTime != null ? event.eventDateTime : ''},onclick='window.location='/events/' + ${event.id} + '''">
+             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},data-lng=${event.longitude != null ? event.longitude : ''},data-eventdate=${event.eventDateTime != null ? event.eventDateTime : ''},data-url=@{/events/{id}(id=${event.id})}">
             <div class="event-card-inner">
 
                 <!-- Body -->
@@ -322,6 +321,16 @@
             if (currentSort === 'relevance' && !hasCache) sortCards('relevance', null, null);
         });
     }
+
+    // Make entire card clickable
+    document.querySelectorAll('.event-card[data-url]').forEach(function(card) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', function(e) {
+            // Don't navigate if they clicked a link or button inside the card
+            if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) return;
+            window.location.href = card.dataset.url;
+        });
+    });
 
     var sortSelect = document.querySelector('select[name="sort"]');
     if (sortSelect) {
