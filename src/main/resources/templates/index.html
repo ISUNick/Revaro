@@ -189,28 +189,6 @@
             </div>
         </div>
 
-        <!-- Pagination -->
-        <nav th:if="${events.totalPages > 1}" class="mt-4 mb-2">
-            <ul class="pagination revaro-pagination justify-content-center">
-                <li class="page-item" th:classappend="${events.first} ? 'disabled'">
-                    <a class="page-link"
-                       th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number - 1})}">
-                        <i class="bi bi-chevron-left"></i>
-                    </a>
-                </li>
-                <li th:each="i : ${#numbers.sequence(0, events.totalPages - 1)}"
-                    class="page-item" th:classappend="${events.number == i} ? 'active'">
-                    <a class="page-link" th:text="${i + 1}"
-                       th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${i})}">1</a>
-                </li>
-                <li class="page-item" th:classappend="${events.last} ? 'disabled'">
-                    <a class="page-link"
-                       th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number + 1})}">
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                </li>
-            </ul>
-        </nav>
     </div>
 
     <!-- Empty state -->
@@ -231,6 +209,59 @@
 </div>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+<!-- Sticky pagination bar — only shows when there are multiple pages -->
+<div th:if="${events != null and events.totalPages > 1}"
+     style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+            background: var(--color-surface); border-top: 1px solid var(--color-border-subtle);
+            padding: 0.625rem 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);">
+
+    <!-- Prev -->
+    <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number - 1})}"
+       th:classappend="${events.first} ? 'disabled'"
+       style="display:inline-flex;align-items:center;justify-content:center;
+              width:36px;height:36px;border-radius:var(--radius-sm);
+              background:var(--color-surface-raised);border:1px solid var(--color-border);
+              color:var(--color-text-muted);text-decoration:none;
+              pointer-events: ${events.first} ? 'none' : 'auto';
+              opacity: ${events.first} ? '0.4' : '1';">
+        <i class="bi bi-chevron-left" style="font-size:0.8rem;"></i>
+    </a>
+
+    <!-- Page numbers -->
+    <div style="display:flex;gap:0.3rem;">
+        <a th:each="i : ${#numbers.sequence(0, events.totalPages - 1)}"
+           th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${i})}"
+           th:text="${i + 1}"
+           style="display:inline-flex;align-items:center;justify-content:center;
+                  width:36px;height:36px;border-radius:var(--radius-sm);
+                  font-size:0.875rem;font-weight:600;text-decoration:none;border:1px solid;"
+           th:style="${events.number == i} ?
+               'background:var(--color-primary);border-color:var(--color-primary);color:#fff;' :
+               'background:var(--color-surface-raised);border-color:var(--color-border);color:var(--color-text-muted);'">
+            1
+        </a>
+    </div>
+
+    <!-- Next -->
+    <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number + 1})}"
+       th:classappend="${events.last} ? 'disabled'"
+       style="display:inline-flex;align-items:center;justify-content:center;
+              width:36px;height:36px;border-radius:var(--radius-sm);
+              background:var(--color-surface-raised);border:1px solid var(--color-border);
+              color:var(--color-text-muted);text-decoration:none;"
+       th:style="${events.last} ? 'opacity:0.4;pointer-events:none;' : ''">
+        <i class="bi bi-chevron-right" style="font-size:0.8rem;"></i>
+    </a>
+
+    <!-- Page count label -->
+    <span style="font-size:0.75rem;color:var(--color-text-muted);margin-left:0.5rem;"
+          th:text="'Page ' + ${events.number + 1} + ' of ' + ${events.totalPages}">Page 1 of 3</span>
+</div>
+
+<!-- Spacer so last card isn't hidden behind sticky bar -->
+<div th:if="${events != null and events.totalPages > 1}" style="height: 60px;"></div>
+
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script>
 (function() {
