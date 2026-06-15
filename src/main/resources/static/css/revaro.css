@@ -849,3 +849,31 @@ a:hover { color: #5490ff; text-decoration: none; }
         padding-right: 1rem;
     }
 }
+
+/* Mobile nav items — inline links in expanded menu */
+.mobile-nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.mobile-nav-item:hover {
+    background-color: rgba(255,255,255,0.06);
+    color: var(--color-text);
+}
+
+/* Footer tagline — centered on mobile */
+@media (max-width: 767px) {
+    .revaro-footer p {
+        max-width: 100% !important;
+        text-align: center;
+    }
+    .revaro-footer .footer-brand {
+        text-align: center;
+    }
+}

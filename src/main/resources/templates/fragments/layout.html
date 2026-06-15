@@ -19,84 +19,129 @@
 
         <a class="navbar-brand" th:href="@{/}">REV<span class="brand-accent">aro</span></a>
 
-        <button class="navbar-toggler border-0 shadow-none" type="button"
-                data-bs-toggle="collapse" data-bs-target="#mainNavbar"
-                aria-controls="mainNavbar" aria-expanded="false">
-            <i class="bi bi-list fs-5" style="color: var(--color-text-muted);"></i>
+        <!-- Mobile right side: avatar + hamburger -->
+        <div class="d-flex align-items-center gap-2 d-lg-none ms-auto">
+            <!-- Mobile avatar (shows pic, not a dropdown) -->
+            <div sec:authorize="isAuthenticated()">
+                <button class="navbar-toggler border-0 shadow-none p-0" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+                        aria-controls="mainNavbar" aria-expanded="false">
+                    <div class="nav-avatar"
+                         th:if="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}">
+                        <img th:src="${currentNavUser.profileImage}"
+                             style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>
+                    </div>
+                    <div class="nav-avatar"
+                         th:unless="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}"
+                         th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</div>
+                </button>
+            </div>
+            <!-- Guest hamburger -->
+            <div sec:authorize="isAnonymous()">
+                <button class="navbar-toggler border-0 shadow-none" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+                        aria-controls="mainNavbar" aria-expanded="false">
+                    <i class="bi bi-list fs-4" style="color: var(--color-text-muted);"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Desktop hamburger (hidden on mobile since we handle it above) -->
+        <button class="navbar-toggler border-0 shadow-none d-none d-lg-none" type="button"
+                data-bs-toggle="collapse" data-bs-target="#mainNavbar">
         </button>
 
         <div class="collapse navbar-collapse" id="mainNavbar">
             <div class="me-auto"></div>
 
-            <div class="d-flex align-items-center gap-2 mt-2 mt-lg-0">
+            <!-- ── MOBILE MENU (shown inline when expanded) ── -->
+            <div class="d-lg-none py-2" sec:authorize="isAuthenticated()">
+                <div style="border-top: 1px solid var(--color-border-subtle); padding-top: 0.75rem; margin-top: 0.5rem;">
+                    <!-- User info header -->
+                    <div class="d-flex align-items-center gap-3 px-1 mb-3">
+                        <div class="nav-avatar"
+                             th:if="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}">
+                            <img th:src="${currentNavUser.profileImage}"
+                                 style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>
+                        </div>
+                        <div class="nav-avatar"
+                             th:unless="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}"
+                             th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</div>
+                        <span style="font-weight: 600; color: var(--color-text);" sec:authentication="name">User</span>
+                    </div>
+                    <!-- Menu items -->
+                    <a th:href="@{/profile}" class="mobile-nav-item">
+                        <i class="bi bi-person me-2"></i>My Profile
+                    </a>
+                    <a th:href="@{/my-events}" class="mobile-nav-item">
+                        <i class="bi bi-calendar3 me-2"></i>My Events
+                    </a>
+                    <a th:href="@{/claims/my-claims}" class="mobile-nav-item">
+                        <i class="bi bi-patch-check me-2"></i>My Claims
+                    </a>
+                    <a th:href="@{/events/create}" class="mobile-nav-item">
+                        <i class="bi bi-plus-lg me-2"></i>Post Event
+                    </a>
+                    <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')" class="mobile-nav-item"
+                       style="color: var(--color-primary-light);">
+                        <i class="bi bi-shield-check me-2"></i>Admin
+                    </a>
+                    <div style="border-top: 1px solid var(--color-border-subtle); margin: 0.5rem 0;"></div>
+                    <form th:action="@{/logout}" method="post" style="margin:0;">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <button type="submit" class="mobile-nav-item w-100 text-start"
+                                style="background: none; border: none; color: var(--color-text-muted); cursor: pointer;">
+                            <i class="bi bi-box-arrow-right me-2"></i>Sign Out
+                        </button>
+                    </form>
+                </div>
+            </div>
 
-                <!-- Guest -->
+            <!-- Guest mobile -->
+            <div class="d-lg-none py-2" sec:authorize="isAnonymous()">
+                <div style="border-top: 1px solid var(--color-border-subtle); padding-top: 0.75rem; margin-top: 0.5rem; display: flex; gap: 0.75rem;">
+                    <a th:href="@{/login}" class="btn btn-nav-login flex-grow-1 text-center">Sign In</a>
+                    <a th:href="@{/register}" class="btn btn-nav-register flex-grow-1 text-center">Join Free</a>
+                </div>
+            </div>
+
+            <!-- ── DESKTOP MENU ── -->
+            <div class="d-none d-lg-flex align-items-center gap-2">
+
                 <div sec:authorize="isAnonymous()">
                     <a th:href="@{/login}" class="btn btn-nav-login me-1">Sign In</a>
                     <a th:href="@{/register}" class="btn btn-nav-register">Join Free</a>
                 </div>
 
-                <!-- Authenticated -->
                 <div sec:authorize="isAuthenticated()" class="d-flex align-items-center gap-2">
-                    <a th:href="@{/events/create}" class="btn btn-nav-register d-none d-md-inline-flex">
+                    <a th:href="@{/events/create}" class="btn btn-nav-register">
                         <i class="bi bi-plus-lg me-1"></i>Post Event
                     </a>
-
                     <div class="dropdown">
                         <button class="btn btn-nav-login dropdown-toggle d-flex align-items-center gap-2 p-1 pe-2"
                                 type="button" data-bs-toggle="dropdown" aria-expanded="false"
                                 style="border-radius: 30px;">
-
-                            <!-- Avatar: server-rendered, no JS needed -->
-                            <div class="nav-avatar" th:if="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}">
+                            <div class="nav-avatar"
+                                 th:if="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}">
                                 <img th:src="${currentNavUser.profileImage}"
-                                     th:alt="${currentNavUser.username}"
                                      style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>
                             </div>
-                            <div class="nav-avatar" th:unless="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}"
-                                 sec:authentication="name"
+                            <div class="nav-avatar"
+                                 th:unless="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}"
                                  th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</div>
-
-                            <span class="d-none d-lg-inline" style="font-size: 0.875rem;" sec:authentication="name">User</span>
+                            <span style="font-size: 0.875rem;" sec:authentication="name">User</span>
                             <i class="bi bi-chevron-down" style="font-size: 0.65rem;"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <a class="dropdown-item" th:href="@{/profile}"
-                                   style="color: var(--color-text-muted); font-size: 0.875rem;">
-                                    <i class="bi bi-person me-2"></i>My Profile
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" th:href="@{/my-events}"
-                                   style="color: var(--color-text-muted); font-size: 0.875rem;">
-                                    <i class="bi bi-calendar3 me-2"></i>My Events
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" th:href="@{/claims/my-claims}"
-                                   style="color: var(--color-text-muted); font-size: 0.875rem;">
-                                    <i class="bi bi-patch-check me-2"></i>My Claims
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item d-md-none" th:href="@{/events/create}"
-                                   style="color: var(--color-text-muted); font-size: 0.875rem;">
-                                    <i class="bi bi-plus-lg me-2"></i>Post Event
-                                </a>
-                            </li>
-                            <li sec:authorize="hasRole('ADMIN')">
-                                <a class="dropdown-item" th:href="@{/admin}"
-                                   style="color: var(--color-primary-light); font-size: 0.875rem;">
-                                    <i class="bi bi-shield-check me-2"></i>Admin
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider" style="border-color: var(--color-border);"/></li>
+                            <li><a class="dropdown-item" th:href="@{/profile}" style="color:var(--color-text-muted);font-size:0.875rem;"><i class="bi bi-person me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" th:href="@{/my-events}" style="color:var(--color-text-muted);font-size:0.875rem;"><i class="bi bi-calendar3 me-2"></i>My Events</a></li>
+                            <li><a class="dropdown-item" th:href="@{/claims/my-claims}" style="color:var(--color-text-muted);font-size:0.875rem;"><i class="bi bi-patch-check me-2"></i>My Claims</a></li>
+                            <li sec:authorize="hasRole('ADMIN')"><a class="dropdown-item" th:href="@{/admin}" style="color:var(--color-primary-light);font-size:0.875rem;"><i class="bi bi-shield-check me-2"></i>Admin</a></li>
+                            <li><hr class="dropdown-divider" style="border-color:var(--color-border);"/></li>
                             <li>
                                 <form th:action="@{/logout}" method="post" style="margin:0;">
                                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                    <button type="submit" class="dropdown-item"
-                                            style="color: var(--color-text-muted); font-size: 0.875rem; background: none; border: none; width: 100%; text-align: left; cursor: pointer; padding: 0.4rem 1rem;">
+                                    <button type="submit" class="dropdown-item" style="color:var(--color-text-muted);font-size:0.875rem;background:none;border:none;width:100%;text-align:left;cursor:pointer;padding:0.4rem 1rem;">
                                         <i class="bi bi-box-arrow-right me-2"></i>Sign Out
                                     </button>
                                 </form>
@@ -104,28 +149,22 @@
                         </ul>
                     </div>
                 </div>
-
             </div>
+
         </div>
     </div>
 </nav>
 
 <!-- ===== FLASH ===== -->
 <div th:fragment="flash">
-    <div th:if="${successMessage}"
-         class="alert alert-revaro-success d-flex align-items-center gap-2 py-2 px-3 mt-3" role="alert">
-        <i class="bi bi-check-circle-fill"></i>
-        <span th:text="${successMessage}"></span>
+    <div th:if="${successMessage}" class="alert alert-revaro-success d-flex align-items-center gap-2 py-2 px-3 mt-3" role="alert">
+        <i class="bi bi-check-circle-fill"></i><span th:text="${successMessage}"></span>
     </div>
-    <div th:if="${errorMessage}"
-         class="alert alert-revaro-error d-flex align-items-center gap-2 py-2 px-3 mt-3" role="alert">
-        <i class="bi bi-exclamation-circle-fill"></i>
-        <span th:text="${errorMessage}"></span>
+    <div th:if="${errorMessage}" class="alert alert-revaro-error d-flex align-items-center gap-2 py-2 px-3 mt-3" role="alert">
+        <i class="bi bi-exclamation-circle-fill"></i><span th:text="${errorMessage}"></span>
     </div>
-    <div th:if="${infoMessage}"
-         class="alert alert-revaro-info d-flex align-items-center gap-2 py-2 px-3 mt-3" role="alert">
-        <i class="bi bi-info-circle-fill"></i>
-        <span th:text="${infoMessage}"></span>
+    <div th:if="${infoMessage}" class="alert alert-revaro-info d-flex align-items-center gap-2 py-2 px-3 mt-3" role="alert">
+        <i class="bi bi-info-circle-fill"></i><span th:text="${infoMessage}"></span>
     </div>
 </div>
 
@@ -135,34 +174,29 @@
         <div class="row g-4 mb-4">
             <div class="col-12 col-md-4">
                 <div class="footer-brand mb-2">REV<span>aro</span></div>
-                <p style="font-size: 0.85rem; line-height: 1.65; max-width: 280px;">
-                    The community platform for automotive enthusiasts. Discover meets, shows,
-                    track days, and more near you.
+                <p style="font-size:0.85rem;line-height:1.65;max-width:280px;">
+                    The community platform for automotive enthusiasts. Discover meets, shows, track days, and more near you.
                 </p>
             </div>
             <div class="col-6 col-md-2 offset-md-2">
-                <div style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase;
-                            letter-spacing: 0.08em; margin-bottom: 0.75rem; color: var(--color-text);">Explore</div>
-                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;color:var(--color-text);">Explore</div>
+                <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.5rem;">
                     <li><a th:href="@{/}">Events</a></li>
                     <li><a th:href="@{/events/create}" sec:authorize="isAuthenticated()">Post Event</a></li>
                     <li><a th:href="@{/register}" sec:authorize="isAnonymous()">Join Free</a></li>
                 </ul>
             </div>
             <div class="col-6 col-md-2">
-                <div style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase;
-                            letter-spacing: 0.08em; margin-bottom: 0.75rem; color: var(--color-text);">Company</div>
-                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;color:var(--color-text);">Company</div>
+                <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.5rem;">
                     <li><a th:href="@{/about}">About Us</a></li>
                     <li><a th:href="@{/contact}">Contact</a></li>
                 </ul>
             </div>
         </div>
-        <div style="border-top: 1px solid var(--color-border-subtle); padding-top: 1.25rem;
-                    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem;
-                    font-size: 0.8rem; color: var(--color-text-muted);">
+        <div style="border-top:1px solid var(--color-border-subtle);padding-top:1.25rem;display:flex;flex-wrap:wrap;justify-content:space-between;gap:0.75rem;font-size:0.8rem;color:var(--color-text-muted);">
             <span>&copy; 2025 Revaro. Built for the car community.</span>
-            <span>Made with <span style="color: var(--color-accent);">♥</span> for automotive culture.</span>
+            <span>Made with <span style="color:var(--color-accent);">♥</span> for automotive culture.</span>
         </div>
     </div>
 </footer>
