@@ -293,12 +293,14 @@ a:hover { color: #5490ff; text-decoration: none; }
     flex-shrink: 0;
     position: relative;
     overflow: hidden;
+    align-self: stretch;
 }
 
-/* Fixed 16:9 aspect ratio for card images */
+/* Image fills the full height of the card on desktop */
 .event-card-image-box {
     width: 100%;
-    aspect-ratio: 16 / 9;
+    height: 100%;
+    min-height: 160px;
     overflow: hidden;
     background: var(--color-surface-raised);
     display: flex; align-items: center; justify-content: center;
