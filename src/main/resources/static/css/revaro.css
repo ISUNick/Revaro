@@ -743,3 +743,109 @@ a:hover { color: #5490ff; text-decoration: none; }
         border-radius: var(--radius-md);
     }
 }
+
+/* ================================================
+   MOBILE RESPONSIVE — full overhaul
+   ================================================ */
+
+/* Stack event cards vertically on mobile, show image on top */
+@media (max-width: 767px) {
+    .event-card-inner {
+        flex-direction: column;
+    }
+    .event-card-image-wrap {
+        display: block !important;
+        width: 100%;
+    }
+    .event-card-image-box {
+        aspect-ratio: 16 / 9;
+        height: auto;
+    }
+    .event-card-body {
+        padding: 1rem;
+    }
+
+    /* Homepage search bar — stack vertically */
+    .search-filter-bar .row {
+        gap: 0.5rem;
+    }
+
+    /* Profile page — stack everything */
+    .profile-avatar.lg {
+        width: 80px;
+        height: 80px;
+        font-size: 1.75rem;
+    }
+
+    /* Rev points badge smaller */
+    .rev-points-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.6rem;
+    }
+
+    /* Event detail — full width panels */
+    .event-info-panel,
+    .rsvp-panel {
+        margin-bottom: 1rem;
+    }
+
+    /* Auth cards full width on small screens */
+    .auth-card {
+        margin: 1rem;
+        padding: 1.5rem 1.25rem;
+    }
+
+    /* Footer — center everything */
+    .revaro-footer .row {
+        text-align: center;
+    }
+    .revaro-footer ul {
+        align-items: center;
+    }
+
+    /* Navbar brand smaller */
+    .revaro-nav .navbar-brand {
+        font-size: 1.25rem;
+    }
+
+    /* Page hero smaller padding */
+    .page-hero {
+        padding: 1.5rem 0 1rem;
+    }
+    .page-hero h1 {
+        font-size: 1.5rem;
+    }
+
+    /* Comment card tighter */
+    .comment-card {
+        padding: 0.75rem 1rem;
+    }
+
+    /* Admin cards stack */
+    .admin-stat-number {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Very small phones */
+    .event-card-body {
+        padding: 0.875rem;
+    }
+    .event-card-title {
+        font-size: 0.9rem;
+    }
+    .event-card-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    .btn-nav-register span,
+    .btn-nav-login span {
+        display: none;
+    }
+    .container-xl {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}

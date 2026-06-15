@@ -17,7 +17,6 @@
 <nav th:fragment="navbar" class="navbar navbar-expand-lg revaro-nav sticky-top">
     <div class="container-xl">
 
-        <!-- Brand — home only, no duplicate Events link -->
         <a class="navbar-brand" th:href="@{/}">REV<span class="brand-accent">aro</span></a>
 
         <button class="navbar-toggler border-0 shadow-none" type="button"
@@ -27,10 +26,8 @@
         </button>
 
         <div class="collapse navbar-collapse" id="mainNavbar">
-            <!-- No nav links — logo already goes home -->
             <div class="me-auto"></div>
 
-            <!-- Right side -->
             <div class="d-flex align-items-center gap-2 mt-2 mt-lg-0">
 
                 <!-- Guest -->
@@ -50,10 +47,16 @@
                                 type="button" data-bs-toggle="dropdown" aria-expanded="false"
                                 style="border-radius: 30px;">
 
-                            <!-- Profile picture avatar in navbar -->
-                            <div class="nav-avatar" id="navAvatar">
-                                <span sec:authentication="name" id="navInitial" style="display:none;"></span>
+                            <!-- Avatar: server-rendered, no JS needed -->
+                            <div class="nav-avatar" th:if="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}">
+                                <img th:src="${currentNavUser.profileImage}"
+                                     th:alt="${currentNavUser.username}"
+                                     style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>
                             </div>
+                            <div class="nav-avatar" th:unless="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}"
+                                 sec:authentication="name"
+                                 th:text="${#strings.substring(#authentication.name, 0, 1).toUpperCase()}">U</div>
+
                             <span class="d-none d-lg-inline" style="font-size: 0.875rem;" sec:authentication="name">User</span>
                             <i class="bi bi-chevron-down" style="font-size: 0.65rem;"></i>
                         </button>
@@ -167,31 +170,6 @@
 <!-- ===== SCRIPTS ===== -->
 <div th:fragment="scripts">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-    // Load the current user's profile picture into the navbar avatar
-    (function() {
-        const avatarEl = document.getElementById('navAvatar');
-        const initialEl = document.getElementById('navInitial');
-        if (!avatarEl || !initialEl) return;
-
-        const username = initialEl.textContent.trim();
-        if (!username) return;
-
-        // Try to fetch profile image via a lightweight check
-        fetch('/api/profile-image')
-            .then(r => r.json())
-            .then(data => {
-                if (data && data.profileImage) {
-                    avatarEl.innerHTML = '<img src="/uploads/' + data.profileImage + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />';
-                } else {
-                    avatarEl.textContent = username.charAt(0).toUpperCase();
-                }
-            })
-            .catch(() => {
-                avatarEl.textContent = username.charAt(0).toUpperCase();
-            });
-    })();
-    </script>
 </div>
 
 </body>
