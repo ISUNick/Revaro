@@ -3,7 +3,10 @@ package com.revaro.controller;
 import com.revaro.entity.User;
 import com.revaro.enums.ClaimStatus;
 import com.revaro.enums.Role;
+import com.revaro.entity.Report;
+import com.revaro.enums.ReportStatus;
 import com.revaro.repository.CommentRepository;
+import com.revaro.repository.ReportRepository;
 import com.revaro.repository.EventRepository;
 import com.revaro.repository.UserRepository;
 import com.revaro.service.ClaimRequestService;
@@ -28,17 +31,20 @@ public class AdminController {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
     private final CommentRepository commentRepository;
+    private final ReportRepository reportRepository;
 
     public AdminController(ClaimRequestService claimRequestService,
                            EventService eventService,
                            UserRepository userRepository,
                            EventRepository eventRepository,
-                           CommentRepository commentRepository) {
+                           CommentRepository commentRepository,
+                           ReportRepository reportRepository) {
         this.claimRequestService = claimRequestService;
         this.eventService = eventService;
         this.userRepository = userRepository;
         this.eventRepository = eventRepository;
         this.commentRepository = commentRepository;
+        this.reportRepository = reportRepository;
     }
 
     // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -49,6 +55,7 @@ public class AdminController {
         model.addAttribute("totalUsers", userRepository.count());
         model.addAttribute("totalEvents", eventRepository.count());
         model.addAttribute("totalComments", commentRepository.count());
+        model.addAttribute("pendingReports", reportRepository.countByStatus(ReportStatus.PENDING));
         model.addAttribute("recentClaims", claimRequestService.getPendingClaims());
         return "admin/dashboard";
     }
@@ -154,6 +161,43 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/events";
+    }
+
+    // ── Reports ───────────────────────────────────────────────────────────────
+
+    @GetMapping("/reports")
+    public String reports(@RequestParam(defaultValue = "0") int page,
+                          @RequestParam(required = false) String status,
+                          Model model) {
+        ReportStatus reportStatus = null;
+        if (status != null && !status.isBlank()) {
+            try { reportStatus = ReportStatus.valueOf(status); } catch (Exception ignored) {}
+        }
+        if (reportStatus != null) {
+            model.addAttribute("reports",
+                    reportRepository.findByStatusOrderByCreatedAtDesc(reportStatus, PageRequest.of(page, 20)));
+        } else {
+            model.addAttribute("reports",
+                    reportRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, 20)));
+        }
+        model.addAttribute("status", status);
+        model.addAttribute("pendingCount", reportRepository.countByStatus(ReportStatus.PENDING));
+        return "admin/reports";
+    }
+
+    @PostMapping("/reports/{id}/review")
+    public String reviewReport(@PathVariable Long id,
+                               @RequestParam String newStatus,
+                               @AuthenticationPrincipal UserDetailsImpl principal,
+                               RedirectAttributes redirectAttributes) {
+        reportRepository.findById(id).ifPresent(report -> {
+            report.setStatus(ReportStatus.valueOf(newStatus));
+            report.setReviewedBy(principal.getUser());
+            report.setReviewedAt(java.time.LocalDateTime.now());
+            reportRepository.save(report);
+        });
+        redirectAttributes.addFlashAttribute("successMessage", "Report marked as " + newStatus.toLowerCase() + ".");
+        return "redirect:/admin/reports";
     }
 
     // ── Comments ──────────────────────────────────────────────────────────────

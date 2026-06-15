@@ -61,13 +61,25 @@
                 </div>
             </div>
 
-            <!-- Edit button (own profile only) -->
-            <div sec:authorize="isAuthenticated()">
+            <!-- Edit button (own profile) or Report button (other users) -->
+            <div sec:authorize="isAuthenticated()" class="d-flex gap-2">
                 <a th:href="@{/profile/edit}"
                    th:if="${#authentication.name == profileUser.username}"
                    class="btn btn-outline-revaro btn-sm">
                     <i class="bi bi-pencil me-1"></i>Edit Profile
                 </a>
+                <form th:if="${#authentication.name != profileUser.username}"
+                      th:action="@{/report/user/{u}(u=${profileUser.username})}"
+                      method="post" style="margin:0;">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" class="btn btn-sm"
+                            style="font-size:0.75rem;color:var(--color-text-muted);
+                                   background:none;border:1px solid var(--color-border-subtle);
+                                   border-radius:var(--radius-sm);padding:0.3rem 0.75rem;"
+                            onclick="return confirm('Report this user for inappropriate behavior?')">
+                        <i class="bi bi-flag me-1"></i>Report User
+                    </button>
+                </form>
             </div>
         </div>
     </div>
