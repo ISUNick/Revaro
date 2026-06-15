@@ -34,7 +34,7 @@
             <div class="d-flex align-items-center gap-4 mb-3">
                 <div class="profile-avatar lg">
                     <img th:if="${user.profileImage != null and !#strings.isEmpty(user.profileImage)}"
-                         th:src="@{/uploads/{img}(img=${user.profileImage})}"
+                         th:src=${user.profileImage}
                          th:alt="${user.username}" id="currentAvatar"/>
                     <span th:unless="${user.profileImage != null and !#strings.isEmpty(user.profileImage)}"
                           th:text="${user.initials}" id="avatarInitials">U</span>
@@ -96,7 +96,7 @@
                 <div th:if="${user.carImage != null and !#strings.isEmpty(user.carImage)}" class="mb-3">
                     <p class="form-label">Current car photo</p>
                     <div class="car-image-box" style="max-width: 340px; border-radius: var(--radius-md); overflow: hidden;">
-                        <img th:src="@{/uploads/{img}(img=${user.carImage})}" alt="Your car"/>
+                        <img th:src=${user.carImage} alt="Your car"/>
                     </div>
                 </div>
 

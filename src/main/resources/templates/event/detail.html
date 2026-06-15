@@ -34,7 +34,7 @@
             <!-- Image — 16:9 fixed ratio, matches cards -->
             <div th:if="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
                  class="event-detail-image-wrap">
-                <img th:src="@{/uploads/{img}(img=${event.featuredImage})}"
+                <img th:src=${event.featuredImage}
                      th:alt="${event.title}" loading="eager"/>
             </div>
             <div th:unless="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
@@ -152,7 +152,7 @@
                                             display:flex; align-items:center; justify-content:center;
                                             font-size:0.75rem; font-weight:700; color:#fff;">
                                     <img th:if="${comment.user != null and comment.user.profileImage != null and !#strings.isEmpty(comment.user.profileImage)}"
-                                         th:src="@{/uploads/{img}(img=${comment.user.profileImage})}"
+                                         th:src=${comment.user.profileImage}
                                          style="width:100%; height:100%; object-fit:cover;"
                                          th:alt="${comment.user.username}"/>
                                     <span th:unless="${comment.user != null and comment.user.profileImage != null and !#strings.isEmpty(comment.user.profileImage)}"

@@ -156,7 +156,7 @@
                 <div class="event-card-image-wrap">
                     <div th:if="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
                          class="event-card-image-box" style="height: 100%;">
-                        <img th:src="@{/uploads/{img}(img=${event.featuredImage})}"
+                        <img th:src=${event.featuredImage}
                              th:alt="${event.title}" loading="lazy"/>
                     </div>
                     <div th:unless="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"

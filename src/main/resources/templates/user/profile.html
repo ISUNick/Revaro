@@ -24,7 +24,7 @@
             <!-- Avatar -->
             <div class="profile-avatar lg">
                 <img th:if="${profileUser.profileImage != null and !#strings.isEmpty(profileUser.profileImage)}"
-                     th:src="@{/uploads/{img}(img=${profileUser.profileImage})}"
+                     th:src=${profileUser.profileImage}
                      th:alt="${profileUser.username}"/>
                 <span th:unless="${profileUser.profileImage != null and !#strings.isEmpty(profileUser.profileImage)}"
                       th:text="${profileUser.initials}">U</span>
@@ -81,7 +81,7 @@
             <div class="car-showcase-card">
                 <div th:if="${profileUser.carImage != null and !#strings.isEmpty(profileUser.carImage)}"
                      class="car-image-box">
-                    <img th:src="@{/uploads/{img}(img=${profileUser.carImage})}"
+                    <img th:src=${profileUser.carImage}
                          th:alt="${profileUser.carMake}"/>
                 </div>
                 <div class="p-3">
