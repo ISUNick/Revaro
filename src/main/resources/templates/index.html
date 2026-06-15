@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Revaro – Discover Automotive Events</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" th:href="@{/css/revaro.css}"/>
+</head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container-xl">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+</div>
+
+<!-- Hero -->
+<section class="page-hero">
+    <div class="container-xl">
+        <h1 class="mb-1">Discover Automotive Events</h1>
+        <p class="lead mb-0">Car meets, shows, track days, cruises &amp; more — all in one place.</p>
+    </div>
+</section>
+
+<!-- Search & Filter -->
+<section class="search-filter-bar">
+    <div class="container-xl">
+        <form method="get" th:action="@{/}" class="row g-2 align-items-center">
+            <div class="col-12 col-md-4 col-lg-5">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search" style="font-size:0.8rem;"></i></span>
+                    <input type="text" class="form-control" name="q"
+                           th:value="${param.q}" placeholder="Search events, organizers, cities..."/>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <input type="text" class="form-control" name="state"
+                       th:value="${param.state}" placeholder="State (e.g. IL)"/>
+            </div>
+            <div class="col-6 col-md-2">
+                <select class="form-select" name="type">
+                    <option value="">All Types</option>
+                    <option value="CAR_MEET"          th:selected="${param.type == 'CAR_MEET'}">Car Meet</option>
+                    <option value="CAR_SHOW"          th:selected="${param.type == 'CAR_SHOW'}">Car Show</option>
+                    <option value="CRUISE"            th:selected="${param.type == 'CRUISE'}">Cruise</option>
+                    <option value="TRACK_DAY"         th:selected="${param.type == 'TRACK_DAY'}">Track Day</option>
+                    <option value="DRAG_STRIP_EVENT"  th:selected="${param.type == 'DRAG_STRIP_EVENT'}">Drag Strip Event</option>
+                    <option value="OTHER"             th:selected="${param.type == 'OTHER'}">Other</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <select class="form-select" name="sort">
+                    <option value="date"   th:selected="${param.sort == null or param.sort == 'date'}">Sort: Date</option>
+                    <option value="newest" th:selected="${param.sort == 'newest'}">Sort: Newest</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2 col-lg-1">
+                <button type="submit" class="btn btn-primary-revaro w-100 justify-content-center">
+                    <i class="bi bi-funnel"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- Feed -->
+<div class="container-xl mt-4" style="min-height: 60vh;">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <p class="text-muted-revaro mb-0" style="font-size: 0.85rem;">
+            <span th:if="${events != null}" th:text="${events.totalElements} + ' events found'">0 events</span>
+        </p>
+        <a th:href="@{/events/create}" sec:authorize="isAuthenticated()"
+           class="btn btn-primary-revaro btn-sm gap-1">
+            <i class="bi bi-plus-lg"></i>Post Event
+        </a>
+    </div>
+
+    <!-- Cards -->
+    <div th:if="${events != null and !events.empty}">
+        <div th:each="event : ${events}" class="event-card">
+            <div class="event-card-inner">
+
+                <!-- Body -->
+                <div class="event-card-body">
+                    <!-- Type badge -->
+                    <div>
+                        <span th:if="${event.eventType != null}"
+                              class="event-type-badge"
+                              th:classappend="${event.eventType.badgeClass}"
+                              th:text="${event.eventType.displayName}">Type</span>
+                    </div>
+
+                    <!-- Title -->
+                    <h2 class="event-card-title">
+                        <a th:href="@{/events/{id}(id=${event.id})}"
+                           style="color: inherit; text-decoration: none;"
+                           th:text="${event.title}">Event Title</a>
+                    </h2>
+
+                    <!-- Organizer -->
+                    <p class="event-card-organizer">
+                        <i class="bi bi-person-fill me-1"></i>
+                        <a th:if="${event.creator != null}"
+                           th:href="@{/profile/{u}(u=${event.creator.username})}"
+                           style="color: var(--color-text-muted);"
+                           th:text="${event.organizerName != null ? event.organizerName : event.creator.username}">Organizer</a>
+                        <span th:unless="${event.creator != null}"
+                              th:text="${event.organizerName != null ? event.organizerName : 'Community Event'}">Organizer</span>
+                        <span th:if="${event.postedByOrganizer}"
+                              style="color: var(--color-going); margin-left: 0.3rem;">
+                            <i class="bi bi-patch-check-fill"></i>
+                        </span>
+                    </p>
+
+                    <!-- Meta -->
+                    <div class="event-card-meta">
+                        <span th:if="${event.eventDateTime != null}" class="event-meta-item">
+                            <i class="bi bi-calendar3"></i>
+                            <span th:text="${#temporals.format(event.eventDateTime, 'EEE, MMM d · h:mm a')}">Date</span>
+                        </span>
+                        <span th:if="${event.city != null}" class="event-meta-item">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            <span th:text="${event.city + (event.state != null ? ', ' + event.state : '')}">City</span>
+                        </span>
+                    </div>
+
+                    <!-- RSVP counts -->
+                    <div class="event-rsvp-row">
+                        <span class="rsvp-count going">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span th:text="${event.goingCount}">0</span> Going
+                        </span>
+                        <span class="rsvp-count interested">
+                            <i class="bi bi-star-fill"></i>
+                            <span th:text="${event.interestedCount}">0</span> Interested
+                        </span>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="event-card-footer">
+                        <a th:href="@{/events/{id}(id=${event.id})}" class="btn-view-event">
+                            View Event <i class="bi bi-arrow-right"></i>
+                        </a>
+                        <span th:if="${event.createdAt != null}"
+                              style="font-size: 0.72rem; color: var(--color-text-muted);"
+                              th:text="${#temporals.format(event.createdAt, 'MMM d')}">Jan 1</span>
+                    </div>
+                </div>
+
+                <!-- Image — strict 16:9 via CSS aspect-ratio -->
+                <div class="event-card-image-wrap">
+                    <div th:if="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
+                         class="event-card-image-box" style="height: 100%;">
+                        <img th:src="@{/uploads/{img}(img=${event.featuredImage})}"
+                             th:alt="${event.title}" loading="lazy"/>
+                    </div>
+                    <div th:unless="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
+                         class="event-card-image-placeholder">
+                        <i class="bi bi-car-front-fill"></i>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <nav th:if="${events.totalPages > 1}" class="mt-4 mb-2">
+            <ul class="pagination revaro-pagination justify-content-center">
+                <li class="page-item" th:classappend="${events.first} ? 'disabled'">
+                    <a class="page-link"
+                       th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number - 1})}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                <li th:each="i : ${#numbers.sequence(0, events.totalPages - 1)}"
+                    class="page-item" th:classappend="${events.number == i} ? 'active'">
+                    <a class="page-link" th:text="${i + 1}"
+                       th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${i})}">1</a>
+                </li>
+                <li class="page-item" th:classappend="${events.last} ? 'disabled'">
+                    <a class="page-link"
+                       th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number + 1})}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Empty state -->
+    <div th:if="${events == null or events.empty}" class="empty-state">
+        <div class="empty-state-icon"><i class="bi bi-car-front-fill"></i></div>
+        <div class="empty-state-title">No events found</div>
+        <p class="mb-3">No upcoming events match your search. Be the first to post one!</p>
+        <div sec:authorize="isAuthenticated()">
+            <a th:href="@{/events/create}" class="btn btn-primary-revaro">
+                <i class="bi bi-plus-lg me-1"></i>Post an Event
+            </a>
+        </div>
+        <div sec:authorize="isAnonymous()">
+            <a th:href="@{/register}" class="btn btn-primary-revaro">Join to Post Events</a>
+        </div>
+    </div>
+
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

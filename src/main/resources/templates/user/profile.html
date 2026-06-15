@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${profileUser.username} + ' – Revaro'">Profile – Revaro</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" th:href="@{/css/revaro.css}"/>
+</head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container-xl mt-4" style="max-width: 860px;">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <!-- Profile header -->
+    <div class="revaro-card p-4 mb-4">
+        <div class="d-flex align-items-start gap-4 flex-wrap">
+
+            <!-- Avatar -->
+            <div class="profile-avatar lg">
+                <img th:if="${profileUser.profileImage != null and !#strings.isEmpty(profileUser.profileImage)}"
+                     th:src="@{/uploads/{img}(img=${profileUser.profileImage})}"
+                     th:alt="${profileUser.username}"/>
+                <span th:unless="${profileUser.profileImage != null and !#strings.isEmpty(profileUser.profileImage)}"
+                      th:text="${profileUser.initials}">U</span>
+            </div>
+
+            <!-- Info -->
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                    <h1 style="font-size: 1.5rem; font-weight: 800; margin: 0;"
+                        th:text="${profileUser.username}">Username</h1>
+                    <span th:if="${profileUser.admin}"
+                          style="background: rgba(42,111,234,0.2); color: var(--color-primary-light);
+                                 padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700;">
+                        ADMIN
+                    </span>
+                </div>
+
+                <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 0.75rem;">
+                    Member since
+                    <span th:if="${profileUser.createdAt != null}"
+                          th:text="${#temporals.format(profileUser.createdAt, 'MMMM yyyy')}">Jan 2025</span>
+                </p>
+
+                <!-- Stats row -->
+                <div class="d-flex gap-4 flex-wrap align-items-center">
+                    <div class="rev-points-badge">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                        <span th:text="${revPoints}">0</span> Rev Points
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--color-text-muted);">
+                        <strong style="color: var(--color-text);" th:text="${eventCount}">0</strong>
+                        events posted
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit button (own profile only) -->
+            <div sec:authorize="isAuthenticated()">
+                <a th:href="@{/profile/edit}"
+                   th:if="${#authentication.name == profileUser.username}"
+                   class="btn btn-outline-revaro btn-sm">
+                    <i class="bi bi-pencil me-1"></i>Edit Profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Car Showcase — only shown if car info exists -->
+        <div class="col-12 col-md-5"
+             th:if="${profileUser.carMake != null and !#strings.isEmpty(profileUser.carMake)}">
+            <h2 class="section-label">Their Ride</h2>
+            <div class="car-showcase-card">
+                <div th:if="${profileUser.carImage != null and !#strings.isEmpty(profileUser.carImage)}"
+                     class="car-image-box">
+                    <img th:src="@{/uploads/{img}(img=${profileUser.carImage})}"
+                         th:alt="${profileUser.carMake}"/>
+                </div>
+                <div class="p-3">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-text);">
+                        <span th:if="${profileUser.carYear != null and !#strings.isEmpty(profileUser.carYear)}"
+                              th:text="${profileUser.carYear + ' '}"></span>
+                        <span th:text="${profileUser.carMake}">Make</span>
+                        <span th:if="${profileUser.carModel != null and !#strings.isEmpty(profileUser.carModel)}"
+                              th:text="' ' + ${profileUser.carModel}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events list — uses profileEvents passed from controller, never touches lazy collection -->
+        <div th:class="${(profileUser.carMake != null and !#strings.isEmpty(profileUser.carMake)) ? 'col-12 col-md-7' : 'col-12'}">
+            <h2 class="section-label">Events Posted</h2>
+
+            <div th:if="${profileEvents != null and !profileEvents.isEmpty()}">
+                <div th:each="event : ${profileEvents}" class="revaro-card p-3 mb-2">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <div>
+                            <a th:href="@{/events/{id}(id=${event.id})}"
+                               style="font-weight: 600; color: var(--color-text);"
+                               th:text="${event.title}">Event</a>
+                            <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.2rem;">
+                                <span th:if="${event.eventType != null}"
+                                      class="event-type-badge"
+                                      th:classappend="${event.eventType.badgeClass}"
+                                      th:text="${event.eventType.displayName}"
+                                      style="font-size: 0.65rem;"></span>
+                                <span th:if="${event.eventDateTime != null}"
+                                      th:text="' · ' + ${#temporals.format(event.eventDateTime, 'MMM d, yyyy')}"></span>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3 flex-shrink-0" style="font-size: 0.8rem;">
+                            <span style="color: var(--color-going);">
+                                <i class="bi bi-check-circle-fill me-1"></i>
+                                <span th:text="${event.goingCount}">0</span>
+                            </span>
+                            <span style="color: var(--color-interested);">
+                                <i class="bi bi-star-fill me-1"></i>
+                                <span th:text="${event.interestedCount}">0</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${profileEvents == null or profileEvents.isEmpty()}"
+                 class="empty-state" style="padding: 2rem 1rem;">
+                <div class="empty-state-icon" style="font-size: 2rem;"><i class="bi bi-calendar-x"></i></div>
+                <p style="margin: 0; color: var(--color-text-muted);">No events posted yet.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

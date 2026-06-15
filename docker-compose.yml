@@ -1,0 +1,57 @@
+version: '3.9'
+
+# ================================================
+# Revaro – Docker Compose
+# Services: app (Spring Boot) + db (PostgreSQL)
+# ================================================
+
+services:
+
+  # --- PostgreSQL Database ---
+  db:
+    image: postgres:16-alpine
+    container_name: revaro-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: revaro
+      POSTGRES_USER: ${POSTGRES_USER:-revaro_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-revaro_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-revaro_user} -d revaro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Revaro Spring Boot Application ---
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: revaro-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-revaro_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-revaro_pass}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local

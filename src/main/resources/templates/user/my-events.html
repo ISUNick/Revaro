@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>My Events – Revaro</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" th:href="@{/css/revaro.css}"/>
+</head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<section class="page-hero">
+    <div class="container-xl">
+        <h1>My Events</h1>
+        <p class="lead mb-0">Events you've created or claimed.</p>
+    </div>
+</section>
+
+<div class="container-xl mt-4" style="max-width: 780px;">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <div class="d-flex justify-content-end mb-3">
+        <a th:href="@{/events/create}" class="btn btn-primary-revaro gap-1">
+            <i class="bi bi-plus-lg"></i>Post New Event
+        </a>
+    </div>
+
+    <div th:if="${events != null and !events.empty}">
+        <div th:each="event : ${events}" class="revaro-card p-4 mb-3">
+            <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <span th:if="${event.eventType != null}"
+                              class="event-type-badge"
+                              th:classappend="${event.eventType.badgeClass}"
+                              th:text="${event.eventType.displayName}">Type</span>
+                        <span th:if="${event.status != null and event.status.name() != 'ACTIVE'}"
+                              class="status-badge"
+                              th:classappend="${'status-' + event.status.name().toLowerCase()}"
+                              th:text="${event.status.displayName}">Status</span>
+                    </div>
+                    <a th:href="@{/events/{id}(id=${event.id})}"
+                       style="font-size: 1.05rem; font-weight: 700; color: var(--color-text);"
+                       th:text="${event.title}">Event Title</a>
+                    <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">
+                        <span th:if="${event.eventDateTime != null}"
+                              th:text="${#temporals.format(event.eventDateTime, 'EEE, MMM d, yyyy · h:mm a')}">Date</span>
+                        <span th:if="${event.city != null}">
+                            · <span th:text="${event.city}">City</span>
+                            <span th:if="${event.state != null}">, <span th:text="${event.state}">ST</span></span>
+                        </span>
+                    </div>
+                    <div class="d-flex gap-3 mt-2" style="font-size: 0.8rem;">
+                        <span style="color: var(--color-going);">
+                            <i class="bi bi-check-circle-fill me-1"></i>
+                            <span th:text="${event.goingCount}">0</span> Going
+                        </span>
+                        <span style="color: var(--color-interested);">
+                            <i class="bi bi-star-fill me-1"></i>
+                            <span th:text="${event.interestedCount}">0</span> Interested
+                        </span>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-shrink-0">
+                    <a th:href="@{/events/{id}/edit(id=${event.id})}"
+                       class="btn btn-outline-revaro btn-sm">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${events == null or events.empty}" class="empty-state">
+        <div class="empty-state-icon"><i class="bi bi-calendar-plus"></i></div>
+        <div class="empty-state-title">No events yet</div>
+        <p class="mb-3">You haven't posted any events. Share one with the community!</p>
+        <a th:href="@{/events/create}" class="btn btn-primary-revaro">
+            <i class="bi bi-plus-lg me-1"></i>Post Your First Event
+        </a>
+    </div>
+
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

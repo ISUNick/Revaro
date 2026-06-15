@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${formMode == 'edit'} ? 'Edit Event – Revaro' : 'Post Event – Revaro'">Post Event – Revaro</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" th:href="@{/css/revaro.css}"/>
+</head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<!-- Page hero -->
+<section class="page-hero">
+    <div class="container-xl">
+        <h1 th:text="${formMode == 'edit'} ? 'Edit Event' : 'Post an Event'">Post an Event</h1>
+        <p class="lead mb-0"
+           th:text="${formMode == 'edit'} ? 'Update your event details.' : 'Share an automotive event with the Revaro community.'">
+            Share an automotive event.
+        </p>
+    </div>
+</section>
+
+<div class="container-xl mt-4" style="max-width: 780px;">
+
+    <!-- Error message -->
+    <div th:if="${errorMessage}"
+         class="alert alert-revaro-error d-flex align-items-center gap-2 py-2 px-3 mb-4">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span th:text="${errorMessage}"></span>
+    </div>
+
+    <form th:action="${formMode == 'edit'} ? @{/events/{id}/edit(id=${event.id})} : @{/events/create}"
+          th:object="${eventDto}"
+          method="post"
+          enctype="multipart/form-data">
+
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" th:field="*{existingImage}"/>
+        <input type="hidden" th:field="*{status}" th:if="${formMode == 'edit'}"/>
+
+        <!-- ── SECTION: Basic Info ── -->
+        <div class="revaro-card p-4 mb-4">
+            <h2 class="section-label">Event Details</h2>
+
+            <!-- Title -->
+            <div class="mb-3">
+                <label for="title" class="form-label">Event Title <span style="color:var(--color-accent)">*</span></label>
+                <input type="text" id="title" th:field="*{title}"
+                       class="form-control"
+                       th:classappend="${#fields.hasErrors('title')} ? 'is-invalid'"
+                       placeholder="e.g. Sunday Morning Cars & Coffee"/>
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></div>
+            </div>
+
+            <!-- Event Type -->
+            <div class="mb-3">
+                <label for="eventType" class="form-label">Event Type <span style="color:var(--color-accent)">*</span></label>
+                <select id="eventType" th:field="*{eventType}"
+                        class="form-select"
+                        th:classappend="${#fields.hasErrors('eventType')} ? 'is-invalid'">
+                    <option value="">Select a type...</option>
+                    <option value="CAR_MEET">Car Meet</option>
+                    <option value="CAR_SHOW">Car Show</option>
+                    <option value="CRUISE">Cruise</option>
+                    <option value="TRACK_DAY">Track Day</option>
+                    <option value="DRAG_STRIP_EVENT">Drag Strip Event</option>
+                    <option value="OTHER">Other</option>
+                </select>
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('eventType')}" th:errors="*{eventType}"></div>
+            </div>
+
+            <!-- Date & Time -->
+            <div class="mb-3">
+                <label for="eventDateTime" class="form-label">Date & Time <span style="color:var(--color-accent)">*</span></label>
+                <input type="datetime-local" id="eventDateTime"
+                       th:field="*{eventDateTime}"
+                       class="form-control"
+                       th:classappend="${#fields.hasErrors('eventDateTime')} ? 'is-invalid'"/>
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('eventDateTime')}" th:errors="*{eventDateTime}"></div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-0">
+                <label for="description" class="form-label">Description</label>
+                <textarea id="description" th:field="*{description}"
+                          class="form-control" rows="5"
+                          placeholder="Tell people what to expect, what to bring, parking details..."></textarea>
+            </div>
+        </div>
+
+        <!-- ── SECTION: Location ── -->
+        <div class="revaro-card p-4 mb-4">
+            <h2 class="section-label">Location</h2>
+
+            <div class="row g-3">
+                <div class="col-12">
+                    <label for="address" class="form-label">Street Address</label>
+                    <input type="text" id="address" th:field="*{address}"
+                           class="form-control" placeholder="123 Main St"/>
+                </div>
+                <div class="col-md-7">
+                    <label for="city" class="form-label">City</label>
+                    <input type="text" id="city" th:field="*{city}"
+                           class="form-control" placeholder="Chicago"/>
+                </div>
+                <div class="col-md-5">
+                    <label for="state" class="form-label">State</label>
+                    <input type="text" id="state" th:field="*{state}"
+                           class="form-control" placeholder="IL" maxlength="50"/>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SECTION: Organizer ── -->
+        <div class="revaro-card p-4 mb-4">
+            <h2 class="section-label">Organizer</h2>
+
+            <!-- Are you the organizer? -->
+            <div class="mb-3">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio"
+                           name="postedByOrganizer" id="orgYes" value="true"
+                           th:checked="${eventDto.postedByOrganizer}"/>
+                    <label class="form-check-label" for="orgYes">
+                        I am the organizer
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio"
+                           name="postedByOrganizer" id="orgNo" value="false"
+                           th:checked="${!eventDto.postedByOrganizer}"/>
+                    <label class="form-check-label" for="orgNo">
+                        I'm posting on behalf of another organizer
+                    </label>
+                </div>
+            </div>
+
+            <!-- Organizer name (shown when posting on behalf) -->
+            <div id="organizerNameField"
+                 th:classappend="${eventDto.postedByOrganizer} ? 'd-none'">
+                <label for="organizerName" class="form-label">Organizer Name <span style="color:var(--color-accent)">*</span></label>
+                <input type="text" id="organizerName" th:field="*{organizerName}"
+                       class="form-control"
+                       th:classappend="${#fields.hasErrors('organizerName')} ? 'is-invalid'"
+                       placeholder="e.g. Midwest Car Club"/>
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('organizerName')}"
+                     th:errors="*{organizerName}"></div>
+            </div>
+        </div>
+
+        <!-- ── SECTION: Source ── -->
+        <div class="revaro-card p-4 mb-4">
+            <h2 class="section-label">Source & Link</h2>
+
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label for="sourceType" class="form-label">Source Type</label>
+                    <select id="sourceType" th:field="*{sourceType}" class="form-select">
+                        <option value="">Select source...</option>
+                        <option th:each="s : ${sourceTypes}"
+                                th:value="${s.name()}"
+                                th:text="${s.displayName}">Source</option>
+                    </select>
+                </div>
+                <div class="col-md-7">
+                    <label for="officialSourceLink" class="form-label">Official Link</label>
+                    <input type="url" id="officialSourceLink" th:field="*{officialSourceLink}"
+                           class="form-control"
+                           placeholder="https://facebook.com/events/..."/>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SECTION: Image ── -->
+        <div class="revaro-card p-4 mb-4">
+            <h2 class="section-label">Featured Image</h2>
+
+            <!-- Show existing image in edit mode -->
+            <div th:if="${eventDto.existingImage != null and !eventDto.existingImage.isEmpty()}"
+                 class="mb-3">
+                <p class="form-label">Current Image</p>
+                <img th:src="@{/uploads/{img}(img=${eventDto.existingImage})}"
+                     alt="Current event image"
+                     style="max-height: 200px; border-radius: var(--radius-md); border: 1px solid var(--color-border);"/>
+                <p class="mt-2" style="font-size: 0.8rem; color: var(--color-text-muted);">
+                    Upload a new image below to replace it.
+                </p>
+            </div>
+
+            <label for="imageFile" class="form-label">
+                <span th:text="${eventDto.existingImage != null} ? 'Replace Image' : 'Upload Image'">Upload Image</span>
+            </label>
+            <input type="file" id="imageFile" name="imageFile"
+                   class="form-control" accept="image/jpeg,image/png,image/webp,image/gif"/>
+            <div class="mt-1" style="font-size: 0.8rem; color: var(--color-text-muted);">
+                Accepted: JPG, PNG, WebP, GIF. Max 10 MB.
+            </div>
+        </div>
+
+        <!-- ── SECTION: Status (edit only) ── -->
+        <div th:if="${formMode == 'edit'}" class="revaro-card p-4 mb-4">
+            <h2 class="section-label">Event Status</h2>
+            <select th:field="*{status}" class="form-select" style="max-width: 220px;">
+                <option th:each="s : ${eventStatuses}"
+                        th:value="${s.name()}"
+                        th:text="${s.displayName}">Status</option>
+            </select>
+        </div>
+
+        <!-- Submit -->
+        <div class="d-flex gap-3 mb-5">
+            <button type="submit" class="btn btn-primary-revaro px-4 py-2">
+                <i class="bi bi-check-lg me-1"></i>
+                <span th:text="${formMode == 'edit'} ? 'Save Changes' : 'Post Event'">Post Event</span>
+            </button>
+            <a th:href="${formMode == 'edit'} ? @{/events/{id}(id=${event.id})} : @{/}"
+               class="btn btn-outline-revaro px-4 py-2">
+                Cancel
+            </a>
+
+            <!-- Delete button (edit only) -->
+            <div th:if="${formMode == 'edit'}" class="ms-auto">
+                <button type="button" class="btn btn-sm"
+                        style="color: var(--color-accent); border: 1px solid var(--color-accent); border-radius: var(--radius-sm); padding: 0.4rem 0.9rem;"
+                        data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="bi bi-trash me-1"></i>Delete Event
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Delete confirmation modal -->
+<div th:if="${formMode == 'edit'}"
+     class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content"
+             style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+            <div class="modal-header" style="border-color: var(--color-border);">
+                <h5 class="modal-title">Delete Event</h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="color: var(--color-text-muted);">
+                Are you sure you want to delete
+                <strong style="color: var(--color-text);" th:text="${event.title}">this event</strong>?
+                This cannot be undone.
+            </div>
+            <div class="modal-footer" style="border-color: var(--color-border);">
+                <button type="button" class="btn btn-outline-revaro"
+                        data-bs-dismiss="modal">Cancel</button>
+                <form th:action="@{/events/{id}/delete(id=${event.id})}" method="post" style="margin:0;">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" class="btn btn-sm"
+                            style="background: var(--color-accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 0.45rem 1rem;">
+                        Yes, Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+// Toggle organizer name field based on radio selection
+document.querySelectorAll('input[name="postedByOrganizer"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const nameField = document.getElementById('organizerNameField');
+        if (this.value === 'true') {
+            nameField.classList.add('d-none');
+        } else {
+            nameField.classList.remove('d-none');
+        }
+    });
+});
+</script>
+
+<script>
+// Image crop preview for event form
+const imageInput = document.getElementById('imageFile');
+if (imageInput) {
+    imageInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+        const preview = document.getElementById('imagePreview');
+        if (preview) {
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+        }
+    });
+}
+</script>
+</body>
+</html>
