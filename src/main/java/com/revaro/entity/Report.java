@@ -26,15 +26,18 @@ public class Report {
 
     // Target IDs — only one will be set depending on reportType
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "reported_event_id")
+    @JoinColumn(name = "reported_event_id", foreignKey = @ForeignKey(name = "fk_report_event",
+            foreignKeyDefinition = "FOREIGN KEY (reported_event_id) REFERENCES events(id) ON DELETE SET NULL"))
     private Event reportedEvent;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "reported_comment_id")
+    @JoinColumn(name = "reported_comment_id", foreignKey = @ForeignKey(name = "fk_report_comment",
+            foreignKeyDefinition = "FOREIGN KEY (reported_comment_id) REFERENCES comments(id) ON DELETE SET NULL"))
     private Comment reportedComment;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "reported_user_id")
+    @JoinColumn(name = "reported_user_id", foreignKey = @ForeignKey(name = "fk_report_user",
+            foreignKeyDefinition = "FOREIGN KEY (reported_user_id) REFERENCES users(id) ON DELETE SET NULL"))
     private User reportedUser;
 
     @Column(length = 1000)
