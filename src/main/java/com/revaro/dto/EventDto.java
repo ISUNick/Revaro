@@ -52,7 +52,7 @@ public class EventDto {
     private SourceType sourceType;
 
     // Status (edit only)
-    private EventStatus status = EventStatus.ACTIVE;
+    private EventStatus status;
 
     // Image upload
     private MultipartFile imageFile;

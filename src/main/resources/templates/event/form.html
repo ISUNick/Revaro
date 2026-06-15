@@ -41,7 +41,6 @@
 
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
         <input type="hidden" th:field="*{existingImage}"/>
-        <input type="hidden" th:field="*{status}" th:if="${formMode == 'edit'}"/>
 
         <!-- ── SECTION: Basic Info ── -->
         <div class="revaro-card p-4 mb-4">
