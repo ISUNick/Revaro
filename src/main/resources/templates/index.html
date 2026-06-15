@@ -44,12 +44,12 @@
             <div class="col-6 col-md-2">
                 <select class="form-select" name="type">
                     <option value="">All Types</option>
-                    <option value="CAR_MEET"          th:selected="${param.type == 'CAR_MEET'}">Car Meet</option>
-                    <option value="CAR_SHOW"          th:selected="${param.type == 'CAR_SHOW'}">Car Show</option>
-                    <option value="CRUISE"            th:selected="${param.type == 'CRUISE'}">Cruise</option>
-                    <option value="TRACK_DAY"         th:selected="${param.type == 'TRACK_DAY'}">Track Day</option>
-                    <option value="DRAG_STRIP_EVENT"  th:selected="${param.type == 'DRAG_STRIP_EVENT'}">Drag Strip Event</option>
-                    <option value="OTHER"             th:selected="${param.type == 'OTHER'}">Other</option>
+                    <option value="CAR_MEET"         th:selected="${param.type == 'CAR_MEET'}">Car Meet</option>
+                    <option value="CAR_SHOW"         th:selected="${param.type == 'CAR_SHOW'}">Car Show</option>
+                    <option value="CRUISE"           th:selected="${param.type == 'CRUISE'}">Cruise</option>
+                    <option value="TRACK_DAY"        th:selected="${param.type == 'TRACK_DAY'}">Track Day</option>
+                    <option value="DRAG_STRIP_EVENT" th:selected="${param.type == 'DRAG_STRIP_EVENT'}">Drag Strip Event</option>
+                    <option value="OTHER"            th:selected="${param.type == 'OTHER'}">Other</option>
                 </select>
             </div>
             <div class="col-6 col-md-2">
@@ -91,7 +91,7 @@
 
                 <!-- Body -->
                 <div class="event-card-body">
-                    <!-- Type badge + status banner -->
+                    <!-- Type badge + status banners -->
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span th:if="${event.eventType != null}"
                               class="event-type-badge"
@@ -100,17 +100,17 @@
                         <span th:if="${event.status != null and event.status.name() == 'CANCELLED'}"
                               class="event-type-badge"
                               style="background:rgba(239,68,68,0.18);color:#f87171;border:1px solid rgba(239,68,68,0.35);">
-                            ⚠ Cancelled
+                            &#9888; Cancelled
                         </span>
                         <span th:if="${event.status != null and event.status.name() == 'POSTPONED'}"
                               class="event-type-badge"
                               style="background:rgba(245,158,11,0.18);color:#fcd34d;border:1px solid rgba(245,158,11,0.35);">
-                            ⏸ Postponed
+                            &#9208; Postponed
                         </span>
                         <span th:if="${event.status != null and event.status.name() == 'ACTIVE' and event.eventDateTime != null and event.eventDateTime.isBefore(#temporals.createNow())}"
                               class="event-type-badge"
                               style="background:rgba(107,114,128,0.18);color:#9ca3af;border:1px solid rgba(107,114,128,0.3);">
-                            ✓ Already Happened
+                            &#10003; Already Happened
                         </span>
                     </div>
 
@@ -173,22 +173,22 @@
                     </div>
                 </div>
 
-                <!-- Image — strict 16:9 via CSS aspect-ratio -->
+                <!-- Image -->
                 <div class="event-card-image-wrap">
                     <div th:if="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
-                         class="event-card-image-box" style="height: 100%;">
-                        <img th:src=${event.featuredImage}
-                             th:alt="${event.title}" loading="lazy"/>
+                         class="event-card-image-box">
+                        <img th:src="${event.featuredImage}"
+                             th:alt="${event.title}"
+                             style="width:100%;height:100%;object-fit:cover;"/>
                     </div>
                     <div th:unless="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
-                         class="event-card-image-placeholder">
+                         class="event-card-image-box event-card-image-placeholder">
                         <i class="bi bi-car-front-fill"></i>
                     </div>
                 </div>
 
             </div>
         </div>
-
     </div>
 
     <!-- Empty state -->
@@ -196,71 +196,56 @@
         <div class="empty-state-icon"><i class="bi bi-car-front-fill"></i></div>
         <div class="empty-state-title">No events found</div>
         <p class="mb-3">No upcoming events match your search. Be the first to post one!</p>
-        <div sec:authorize="isAuthenticated()">
-            <a th:href="@{/events/create}" class="btn btn-primary-revaro">
-                <i class="bi bi-plus-lg me-1"></i>Post an Event
-            </a>
-        </div>
-        <div sec:authorize="isAnonymous()">
-            <a th:href="@{/register}" class="btn btn-primary-revaro">Join to Post Events</a>
-        </div>
+        <a th:href="@{/events/create}" sec:authorize="isAuthenticated()" class="btn btn-primary-revaro">
+            Post an Event
+        </a>
     </div>
 
 </div>
 
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<!-- Sticky pagination bar — only shows when there are multiple pages -->
+<!-- Pagination — sits after all event cards -->
 <div th:if="${events != null and events.totalPages > 1}"
-     style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-            background: var(--color-surface); border-top: 1px solid var(--color-border-subtle);
-            padding: 0.625rem 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);">
+     class="container-xl"
+     style="padding-top:1.5rem;padding-bottom:2rem;display:flex;align-items:center;justify-content:center;gap:0.4rem;flex-wrap:wrap;">
 
     <!-- Prev -->
     <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number - 1})}"
-       th:classappend="${events.first} ? 'disabled'"
+       th:style="${events.first} ? 'opacity:0.35;pointer-events:none;' : ''"
        style="display:inline-flex;align-items:center;justify-content:center;
               width:36px;height:36px;border-radius:var(--radius-sm);
               background:var(--color-surface-raised);border:1px solid var(--color-border);
-              color:var(--color-text-muted);text-decoration:none;
-              pointer-events: ${events.first} ? 'none' : 'auto';
-              opacity: ${events.first} ? '0.4' : '1';">
+              color:var(--color-text-muted);text-decoration:none;">
         <i class="bi bi-chevron-left" style="font-size:0.8rem;"></i>
     </a>
 
     <!-- Page numbers -->
-    <div style="display:flex;gap:0.3rem;">
+    <div style="display:flex;gap:0.3rem;flex-wrap:wrap;justify-content:center;">
         <a th:each="i : ${#numbers.sequence(0, events.totalPages - 1)}"
            th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${i})}"
            th:text="${i + 1}"
-           style="display:inline-flex;align-items:center;justify-content:center;
-                  width:36px;height:36px;border-radius:var(--radius-sm);
-                  font-size:0.875rem;font-weight:600;text-decoration:none;border:1px solid;"
            th:style="${events.number == i} ?
                'background:var(--color-primary);border-color:var(--color-primary);color:#fff;' :
-               'background:var(--color-surface-raised);border-color:var(--color-border);color:var(--color-text-muted);'">
+               'background:var(--color-surface-raised);border-color:var(--color-border);color:var(--color-text-muted);'"
+           style="display:inline-flex;align-items:center;justify-content:center;
+                  width:36px;height:36px;border-radius:var(--radius-sm);
+                  font-size:0.875rem;font-weight:600;text-decoration:none;border:1px solid;">
             1
         </a>
     </div>
 
     <!-- Next -->
     <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number + 1})}"
-       th:classappend="${events.last} ? 'disabled'"
+       th:style="${events.last} ? 'opacity:0.35;pointer-events:none;' : ''"
        style="display:inline-flex;align-items:center;justify-content:center;
               width:36px;height:36px;border-radius:var(--radius-sm);
               background:var(--color-surface-raised);border:1px solid var(--color-border);
-              color:var(--color-text-muted);text-decoration:none;"
-       th:style="${events.last} ? 'opacity:0.4;pointer-events:none;' : ''">
+              color:var(--color-text-muted);text-decoration:none;">
         <i class="bi bi-chevron-right" style="font-size:0.8rem;"></i>
     </a>
 
-    <!-- Page count label -->
-    <span style="font-size:0.75rem;color:var(--color-text-muted);margin-left:0.5rem;"
+    <span style="font-size:0.75rem;color:var(--color-text-muted);margin-left:0.4rem;"
           th:text="'Page ' + ${events.number + 1} + ' of ' + ${events.totalPages}">Page 1 of 3</span>
 </div>
-
-<!-- Spacer so last card isn't hidden behind sticky bar -->
-<div th:if="${events != null and events.totalPages > 1}" style="height: 60px;"></div>
 
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script>
@@ -275,57 +260,43 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    // Relevance score: lower = more relevant
-    // Formula: days^0.6 * distance^0.5
-    // Events with no location get a big penalty (treated as 999 miles)
-    // Events with no date get sorted last
     function relevanceScore(card, userLat, userLng, nowMs) {
         var eventDateStr = card.dataset.eventdate;
         var lat = parseFloat(card.dataset.lat);
         var lng = parseFloat(card.dataset.lng);
-
-        // Days until event (negative = past, penalized heavily)
         var daysUntil = 9999;
         if (eventDateStr) {
             var diff = (new Date(eventDateStr).getTime() - nowMs) / (1000 * 60 * 60 * 24);
-            if (diff < 0) return 999999; // Past events go to the very bottom
-            daysUntil = Math.max(0.1, diff); // minimum 0.1 to avoid log(0)
+            if (diff < 0) return 999999;
+            daysUntil = Math.max(0.1, diff);
         }
-
-        // Distance in miles (999 if no coords)
         var miles = 999;
         if (!isNaN(lat) && !isNaN(lng) && userLat !== null && userLng !== null) {
             miles = Math.max(0.1, haversine(userLat, userLng, lat, lng));
         }
-
-        // Formula: days^0.6 * distance^0.5
-        // Both factors penalize you, but with diminishing returns
         return Math.pow(daysUntil, 0.6) * Math.pow(miles, 0.5);
     }
 
     function showDistances(userLat, userLng) {
-        var cards = document.querySelectorAll('.event-card');
-        cards.forEach(function(card) {
+        document.querySelectorAll('.event-card').forEach(function(card) {
             var lat = parseFloat(card.dataset.lat);
             var lng = parseFloat(card.dataset.lng);
             if (isNaN(lat) || isNaN(lng)) return;
             var miles = haversine(userLat, userLng, lat, lng);
-            var label = miles < 1 ? '< 1 mi' : Math.round(miles) + ' mi';
             var distEl = card.querySelector('.event-distance-label');
-            if (distEl) distEl.textContent = '· ' + label;
+            if (distEl) distEl.textContent = '· ' + (miles < 1 ? '< 1 mi' : Math.round(miles) + ' mi');
         });
     }
 
     function sortCards(mode, userLat, userLng) {
-        var feed = document.querySelector('.event-card') && document.querySelector('.event-card').parentElement;
-        if (!feed) return;
+        var first = document.querySelector('.event-card');
+        if (!first) return;
+        var feed = first.parentElement;
         var cards = Array.from(feed.querySelectorAll('.event-card'));
         var nowMs = Date.now();
-
         if (mode === 'relevance') {
             cards.sort(function(a, b) {
-                return relevanceScore(a, userLat, userLng, nowMs) -
-                       relevanceScore(b, userLat, userLng, nowMs);
+                return relevanceScore(a, userLat, userLng, nowMs) - relevanceScore(b, userLat, userLng, nowMs);
             });
         } else if (mode === 'distance') {
             if (userLat === null || userLng === null) return;
@@ -337,53 +308,39 @@
                 return haversine(userLat, userLng, aLat, aLng) - haversine(userLat, userLng, bLat, bLng);
             });
         }
-
         cards.forEach(function(c) { feed.appendChild(c); });
     }
 
     var urlParams = new URLSearchParams(window.location.search);
     var currentSort = urlParams.get('sort') || 'relevance';
-    var needsLocation = (currentSort === 'relevance' || currentSort === 'distance');
-
     var cachedLat = parseFloat(localStorage.getItem('revaro_lat'));
     var cachedLng = parseFloat(localStorage.getItem('revaro_lng'));
     var hasCache = !isNaN(cachedLat) && !isNaN(cachedLng);
 
-    // Apply immediately with cached coords if available
     if (hasCache) {
         showDistances(cachedLat, cachedLng);
         sortCards(currentSort, cachedLat, cachedLng);
     } else if (currentSort === 'relevance') {
-        // No location — still sort by relevance using time only (distance = 999 for all)
         sortCards('relevance', null, null);
     }
 
-    // Always refresh location in background
-    if (navigator.geolocation && needsLocation) {
+    if (navigator.geolocation && (currentSort === 'relevance' || currentSort === 'distance')) {
         navigator.geolocation.getCurrentPosition(function(pos) {
-            var lat = pos.coords.latitude;
-            var lng = pos.coords.longitude;
+            var lat = pos.coords.latitude, lng = pos.coords.longitude;
             localStorage.setItem('revaro_lat', lat);
             localStorage.setItem('revaro_lng', lng);
             showDistances(lat, lng);
             sortCards(currentSort, lat, lng);
         }, function() {
-            // Denied — sort by time only for relevance
-            if (currentSort === 'relevance' && !hasCache) {
-                sortCards('relevance', null, null);
-            }
+            if (currentSort === 'relevance' && !hasCache) sortCards('relevance', null, null);
         });
     }
 
-    // Intercept distance/relevance sort form submit to ensure we have location
     var sortSelect = document.querySelector('select[name="sort"]');
     if (sortSelect) {
         sortSelect.addEventListener('change', function() {
-            var val = this.value;
-            if (val !== 'distance' && val !== 'relevance') return;
-            var lat = parseFloat(localStorage.getItem('revaro_lat'));
-            var lng = parseFloat(localStorage.getItem('revaro_lng'));
-            if (!isNaN(lat) && !isNaN(lng)) return; // Already have location
+            if (this.value !== 'distance' && this.value !== 'relevance') return;
+            if (!isNaN(parseFloat(localStorage.getItem('revaro_lat')))) return;
             var form = this.closest('form');
             form.addEventListener('submit', function(e) {
                 if (!navigator.geolocation) return;
