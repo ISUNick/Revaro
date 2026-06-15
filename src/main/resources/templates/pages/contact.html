@@ -10,77 +10,36 @@
     <link rel="stylesheet" th:href="@{/css/revaro.css}"/>
 </head>
 <body>
-
+ 
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
-
+ 
 <section class="page-hero">
     <div class="container-xl">
         <h1>Get in Touch</h1>
-        <p class="lead mb-0">Questions, feedback, or just want to say hey — we're easy to reach.</p>
+        <p class="lead mb-0">Questions, feedback, or just want to say hey — drop us an email.</p>
     </div>
 </section>
-
-<div class="container-xl mt-5" style="max-width: 680px;">
-
-    <div class="row g-4 mb-5">
-
-        <!-- Email -->
-        <div class="col-12 col-md-6">
-            <div class="revaro-card p-4 h-100">
-                <div style="width: 44px; height: 44px; border-radius: var(--radius-md);
-                            background: rgba(42,111,234,0.12); display: flex; align-items: center;
-                            justify-content: center; margin-bottom: 1rem;">
-                    <i class="bi bi-envelope-fill" style="color: var(--color-primary-light); font-size: 1.2rem;"></i>
-                </div>
-                <div style="font-weight: 700; font-size: 1rem; margin-bottom: 0.4rem;">Email</div>
-                <p style="color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: 0.75rem; line-height: 1.6;">
-                    Best for questions, bug reports, or partnership inquiries. We read every email.
-                </p>
-                <a href="mailto:nickbafia@gmail.com"
-                   style="color: var(--color-primary-light); font-weight: 600; font-size: 0.9375rem;">
-                    nickbafia@gmail.com
-                </a>
-            </div>
+ 
+<div class="container-xl mt-5" style="max-width: 560px;">
+ 
+    <div class="revaro-card p-5 mb-5 text-center">
+        <div style="width: 56px; height: 56px; border-radius: var(--radius-md);
+                    background: rgba(42,111,234,0.12); display: flex; align-items: center;
+                    justify-content: center; margin: 0 auto 1.25rem;">
+            <i class="bi bi-envelope-fill" style="color: var(--color-primary-light); font-size: 1.4rem;"></i>
         </div>
-
-        <!-- Phone -->
-        <div class="col-12 col-md-6">
-            <div class="revaro-card p-4 h-100">
-                <div style="width: 44px; height: 44px; border-radius: var(--radius-md);
-                            background: rgba(34,197,94,0.1); display: flex; align-items: center;
-                            justify-content: center; margin-bottom: 1rem;">
-                    <i class="bi bi-telephone-fill" style="color: var(--color-going); font-size: 1.2rem;"></i>
-                </div>
-                <div style="font-weight: 700; font-size: 1rem; margin-bottom: 0.4rem;">Phone</div>
-                <p style="color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: 0.75rem; line-height: 1.6;">
-                    For urgent issues or if you just prefer a call. Available most business hours.
-                </p>
-                <a href="tel:+13124385313"
-                   style="color: var(--color-going); font-weight: 600; font-size: 0.9375rem;">
-                    (312) 438-5313
-                </a>
-            </div>
-        </div>
-
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Send us an email</h2>
+        <p style="color: var(--color-text-muted); font-size: 0.9rem; line-height: 1.7; margin-bottom: 1.5rem;">
+            Have a question, found a bug, or want to get involved?
+            We read every message and try to respond within 24–48 hours.
+        </p>
+        <a href="mailto:nickbafia@gmail.com" class="btn btn-primary-revaro px-4 py-2" style="font-size: 1rem;">
+            <i class="bi bi-envelope me-2"></i>nickbafia@gmail.com
+        </a>
     </div>
-
-    <!-- Response time note -->
-    <div class="revaro-card p-4 mb-5"
-         style="background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.2);">
-        <div class="d-flex align-items-center gap-3">
-            <i class="bi bi-clock" style="font-size: 1.25rem; color: var(--color-interested); flex-shrink: 0;"></i>
-            <div>
-                <div style="font-weight: 600; margin-bottom: 0.2rem;">Response Times</div>
-                <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: 0; line-height: 1.6;">
-                    Email responses typically within 24–48 hours. For event-related issues,
-                    include the event link in your message to speed things up.
-                </p>
-            </div>
-        </div>
-    </div>
-
+ 
 </div>
-
+ 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:replace="~{fragments/layout :: scripts}"></div>
 </body>
