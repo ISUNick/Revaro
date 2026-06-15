@@ -24,72 +24,69 @@
 
     <div th:replace="~{fragments/layout :: flash}"></div>
 
-    <!-- Stats row — 4 boxes -->
+    <!-- 4 columns: each has a stat box + nav card stacked -->
     <div class="row g-3 mb-4">
+
+        <!-- Claims -->
         <div class="col-6 col-md-3">
-            <div class="revaro-card p-4 text-center">
+            <div class="revaro-card p-4 text-center mb-3">
                 <div style="font-size: 2rem; font-weight: 800; color: var(--color-interested);"
                      th:text="${pendingClaimsCount}">0</div>
                 <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Pending Claims</div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="revaro-card p-4 text-center">
-                <div style="font-size: 2rem; font-weight: 800; color: var(--color-primary-light);"
-                     th:text="${totalUsers}">0</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Users</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="revaro-card p-4 text-center">
-                <div style="font-size: 2rem; font-weight: 800; color: var(--color-going);"
-                     th:text="${totalEvents}">0</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Events</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="revaro-card p-4 text-center">
-                <div style="font-size: 2rem; font-weight: 800; color: #a855f7;"
-                     th:text="${totalComments}">0</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Comments</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Nav cards — 4 cards in 2x2 -->
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-md-6">
             <a th:href="@{/admin/claims}" class="revaro-card p-4 d-block text-decoration-none admin-nav-card">
                 <i class="bi bi-patch-check-fill admin-nav-icon" style="color: var(--color-interested);"></i>
-                <div class="admin-nav-label">Claim Requests</div>
-                <div class="admin-nav-sub">Review organizer verification requests</div>
+                <div class="admin-nav-label">Claims</div>
+                <div class="admin-nav-sub">Review organizer requests</div>
                 <span th:if="${pendingClaimsCount > 0}"
                       class="badge"
                       style="background: var(--color-interested); color: #000; font-size: 0.7rem; margin-top: 0.5rem; display: inline-block;"
                       th:text="${pendingClaimsCount} + ' pending'">0 pending</span>
             </a>
         </div>
-        <div class="col-12 col-md-6">
+
+        <!-- Users -->
+        <div class="col-6 col-md-3">
+            <div class="revaro-card p-4 text-center mb-3">
+                <div style="font-size: 2rem; font-weight: 800; color: var(--color-primary-light);"
+                     th:text="${totalUsers}">0</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Users</div>
+            </div>
             <a th:href="@{/admin/users}" class="revaro-card p-4 d-block text-decoration-none admin-nav-card">
                 <i class="bi bi-people-fill admin-nav-icon" style="color: var(--color-primary-light);"></i>
                 <div class="admin-nav-label">Users</div>
-                <div class="admin-nav-sub">Manage user accounts and roles</div>
+                <div class="admin-nav-sub">Manage accounts and roles</div>
             </a>
         </div>
-        <div class="col-12 col-md-6">
+
+        <!-- Events -->
+        <div class="col-6 col-md-3">
+            <div class="revaro-card p-4 text-center mb-3">
+                <div style="font-size: 2rem; font-weight: 800; color: var(--color-going);"
+                     th:text="${totalEvents}">0</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Events</div>
+            </div>
             <a th:href="@{/admin/events}" class="revaro-card p-4 d-block text-decoration-none admin-nav-card">
                 <i class="bi bi-calendar3 admin-nav-icon" style="color: var(--color-going);"></i>
                 <div class="admin-nav-label">Events</div>
-                <div class="admin-nav-sub">View and moderate all events</div>
+                <div class="admin-nav-sub">View and moderate events</div>
             </a>
         </div>
-        <div class="col-12 col-md-6">
+
+        <!-- Comments -->
+        <div class="col-6 col-md-3">
+            <div class="revaro-card p-4 text-center mb-3">
+                <div style="font-size: 2rem; font-weight: 800; color: #a855f7;"
+                     th:text="${totalComments}">0</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem;">Total Comments</div>
+            </div>
             <a th:href="@{/admin/comments}" class="revaro-card p-4 d-block text-decoration-none admin-nav-card">
                 <i class="bi bi-chat-dots admin-nav-icon" style="color: #a855f7;"></i>
                 <div class="admin-nav-label">Comments</div>
                 <div class="admin-nav-sub">Moderate all comments</div>
             </a>
         </div>
+
     </div>
 
     <!-- Pending claims quick list -->
