@@ -44,16 +44,24 @@ public class EventService {
     public EventService(EventRepository eventRepository,
                         RsvpRepository rsvpRepository,
                         FileUploadUtil fileUploadUtil,
-                        GeocodingUtil geocodingUtil) {
+                        GeocodingUtil geocodingUtil,
+                        ReportRepository reportRepository,
+                        ProfanityFilter profanityFilter) {
         this.eventRepository = eventRepository;
         this.rsvpRepository = rsvpRepository;
         this.fileUploadUtil = fileUploadUtil;
         this.geocodingUtil = geocodingUtil;
+        this.reportRepository = reportRepository;
+        this.profanityFilter = profanityFilter;
     }
 
     // ── Create ────────────────────────────────────────────────────────────────
 
     public Event createEvent(EventDto dto, User creator) throws IOException {
+        // Check for profanity before applying DTO so flagged is in scope
+        boolean flagged = profanityFilter.containsProfanity(dto.getTitle())
+                       || profanityFilter.containsProfanity(dto.getDescription());
+
         Event event = new Event();
         applyDto(event, dto);
         event.setCreator(creator);
@@ -71,7 +79,6 @@ public class EventService {
         }
 
         Event saved = eventRepository.save(event);
-        // Auto-report if profanity was found
         if (flagged) {
             Report report = new Report();
             report.setReporter(creator);
