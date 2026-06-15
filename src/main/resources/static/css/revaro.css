@@ -277,6 +277,7 @@ a:hover { color: #5490ff; text-decoration: none; }
 .event-card-inner {
     display: flex;
     flex-direction: row;
+    height: 200px;
 }
 
 .event-card-body {
@@ -286,6 +287,7 @@ a:hover { color: #5490ff; text-decoration: none; }
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    overflow: hidden;
 }
 
 .event-card-image-wrap {
@@ -293,14 +295,12 @@ a:hover { color: #5490ff; text-decoration: none; }
     flex-shrink: 0;
     position: relative;
     overflow: hidden;
-    align-self: stretch;
 }
 
 /* Image fills the full height of the card on desktop */
 .event-card-image-box {
     width: 100%;
     height: 100%;
-    min-height: 160px;
     overflow: hidden;
     background: var(--color-surface-raised);
     display: flex; align-items: center; justify-content: center;
@@ -756,14 +756,16 @@ a:hover { color: #5490ff; text-decoration: none; }
 @media (max-width: 767px) {
     .event-card-inner {
         flex-direction: column;
+        height: auto;
     }
     .event-card-image-wrap {
         display: block !important;
         width: 100%;
+        height: 180px;
     }
     .event-card-image-box {
-        aspect-ratio: 16 / 9;
-        height: auto;
+        height: 180px;
+        aspect-ratio: unset;
     }
     .event-card-body {
         padding: 1rem;
