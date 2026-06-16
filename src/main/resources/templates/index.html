@@ -229,6 +229,11 @@
                               style="background:rgba(107,114,128,0.18);color:#9ca3af;border:1px solid rgba(107,114,128,0.3);">
                             &#10003; Already Happened
                         </span>
+                        <!-- Tags inline with type badge -->
+                        <span th:each="tag : ${event.tags}"
+                              th:if="${event.tags != null}"
+                              th:text="${tag.name}"
+                              th:style="'font-size:0.63rem;font-weight:600;padding:0.15rem 0.45rem;border-radius:20px;white-space:nowrap;background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';'">Tag</span>
                     </div>
 
                     <!-- Title -->
@@ -263,14 +268,6 @@
                             <span th:text="${event.city + (event.state != null ? ', ' + event.state : '')}">City</span>
                             <span class="event-distance-label" style="color:var(--color-primary-light);font-weight:600;margin-left:0.25rem;"></span>
                         </span>
-                    </div>
-
-                    <!-- Tags -->
-                    <div th:if="${event.tags != null and !event.tags.empty}"
-                         style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;">
-                        <span th:each="tag : ${event.tags}"
-                              th:text="${tag.name}"
-                              th:style="'font-size:0.63rem;font-weight:600;padding:0.15rem 0.45rem;border-radius:20px;white-space:nowrap;background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';'">Tag</span>
                     </div>
 
                     <!-- RSVP -->

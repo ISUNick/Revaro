@@ -33,8 +33,7 @@ public class TagDataInitializer implements ApplicationRunner {
             new Tag("American Muscle", TagCategory.STYLE),
             new Tag("Lowrider", TagCategory.STYLE),
             new Tag("Stance", TagCategory.STYLE),
-            new Tag("Hellaflush", TagCategory.STYLE),
-            new Tag("Classic / Vintage", TagCategory.STYLE),
+            new Tag("Classic", TagCategory.STYLE),
             new Tag("Rat Rod", TagCategory.STYLE),
             new Tag("Off-Road / 4x4", TagCategory.STYLE),
             new Tag("Truck", TagCategory.STYLE),
@@ -43,12 +42,9 @@ public class TagDataInitializer implements ApplicationRunner {
             // Vibe & Format
             new Tag("Cars and Coffee", TagCategory.VIBE),
             new Tag("Cruise Night", TagCategory.VIBE),
-            new Tag("Show and Shine", TagCategory.VIBE),
             new Tag("Meet and Greet", TagCategory.VIBE),
-            new Tag("Drive-In", TagCategory.VIBE),
             new Tag("Pop-Up", TagCategory.VIBE),
             new Tag("Charity Event", TagCategory.VIBE),
-            new Tag("Night Meet", TagCategory.VIBE),
             new Tag("Weekly Meet", TagCategory.VIBE),
 
             // Performance
@@ -70,10 +66,10 @@ public class TagDataInitializer implements ApplicationRunner {
             new Tag("Porsche", TagCategory.BRANDS),
             new Tag("Ford", TagCategory.BRANDS),
             new Tag("Chevy", TagCategory.BRANDS),
-            new Tag("Dodge / Mopar", TagCategory.BRANDS),
+            new Tag("Dodge", TagCategory.BRANDS),
             new Tag("Nissan", TagCategory.BRANDS),
             new Tag("Mitsubishi", TagCategory.BRANDS),
-            new Tag("Exotic / Supercar", TagCategory.BRANDS),
+            new Tag("Supercar", TagCategory.BRANDS),
             new Tag("Jeep", TagCategory.BRANDS),
 
             // Other
@@ -82,7 +78,7 @@ public class TagDataInitializer implements ApplicationRunner {
             new Tag("Paid Entry", TagCategory.OTHER),
             new Tag("Vendor Booths", TagCategory.OTHER),
             new Tag("Food Trucks", TagCategory.OTHER),
-            new Tag("All Makes Welcome", TagCategory.OTHER),
+            new Tag("All Are Welcome", TagCategory.OTHER),
             new Tag("Invite Only", TagCategory.OTHER)
         ));
     }
