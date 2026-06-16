@@ -229,6 +229,11 @@
                               style="background:rgba(107,114,128,0.18);color:#9ca3af;border:1px solid rgba(107,114,128,0.3);">
                             &#10003; Already Happened
                         </span>
+                        <span th:if="${event.recurring}"
+                              class="event-type-badge"
+                              style="background:rgba(42,111,234,0.12);color:var(--color-primary-light);border:1px solid rgba(42,111,234,0.25);">
+                            <i class="bi bi-arrow-repeat me-1"></i>Series
+                        </span>
                         <!-- Tags inline with type badge -->
                         <span th:each="tag : ${event.tags}"
                               th:if="${event.tags != null}"

@@ -26,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -68,34 +70,106 @@ public class EventService {
         boolean flagged = profanityFilter.containsProfanity(dto.getTitle())
                        || profanityFilter.containsProfanity(dto.getDescription());
 
-        Event event = new Event();
-        applyDto(event, dto);
-        event.setCreator(creator);
-        event.setStatus(EventStatus.ACTIVE);
-
+        // Upload image once — all recurring instances share the same URL
+        String imageUrl = null;
         if (dto.getImageFile() != null && !dto.getImageFile().isEmpty()) {
-            event.setFeaturedImage(fileUploadUtil.saveImage(dto.getImageFile()));
+            imageUrl = fileUploadUtil.saveImage(dto.getImageFile());
         }
 
-        if (dto.isPostedByOrganizer()) {
-            event.setOrganizerName(creator.getUsername());
+        // Geocode once
+        double[] coords = null;
+        if (dto.getCity() != null && !dto.getCity().isBlank()) {
+            coords = geocodingUtil.geocode(dto.getCity(), dto.getState());
+        }
+
+        // Resolve tags once
+        Set<Tag> tags = new HashSet<>();
+        if (dto.getTagIds() != null && !dto.getTagIds().isEmpty()) {
+            tags = new HashSet<>(tagRepository.findAllById(dto.getTagIds()));
+        }
+
+        // Build list of dates to create events for
+        List<LocalDateTime> dates = buildRecurringDates(dto);
+
+        Event firstSaved = null;
+        for (LocalDateTime date : dates) {
+            Event event = new Event();
+            applyDtoToEvent(event, dto, tags, coords);
+            event.setEventDateTime(date);
+            event.setCreator(creator);
+            event.setStatus(EventStatus.ACTIVE);
+            event.setFeaturedImage(imageUrl);
+            if (dto.isPostedByOrganizer()) {
+                event.setOrganizerName(creator.getUsername());
+            } else {
+                event.setOrganizerName(dto.getOrganizerName());
+            }
+            // Mark recurring events with "(Series)" suffix if more than one date
+            if (dates.size() > 1) {
+                event.setRecurring(true);
+            }
+
+            Event saved = eventRepository.save(event);
+            if (firstSaved == null) firstSaved = saved;
+
+            if (flagged) {
+                Report report = new Report();
+                report.setReporter(creator);
+                report.setReportType(ReportType.EVENT);
+                report.setReportedEvent(saved);
+                report.setReason("Auto-flagged: event content contained filtered language");
+                report.setStatus(ReportStatus.PENDING);
+                reportRepository.save(report);
+            }
+        }
+
+        return firstSaved;
+    }
+
+    /**
+     * Build the list of dates for a recurring event.
+     * For non-recurring events, returns a single-element list.
+     */
+    private List<LocalDateTime> buildRecurringDates(EventDto dto) {
+        List<LocalDateTime> dates = new ArrayList<>();
+        dates.add(dto.getEventDateTime());
+
+        if (!dto.isRecurring()
+                || dto.getRecurringEndDate() == null
+                || dto.getRecurringFrequency() == null) {
+            return dates;
+        }
+
+        LocalDate endDate = dto.getRecurringEndDate();
+        LocalDate current = dto.getEventDateTime().toLocalDate();
+
+        int daysToAdd = switch (dto.getRecurringFrequency()) {
+            case "BIWEEKLY" -> 14;
+            case "MONTHLY"  -> 0; // handled separately
+            default         -> 7; // WEEKLY
+        };
+
+        // Cap at 52 occurrences to prevent runaway creation
+        int maxOccurrences = 52;
+        int count = 0;
+
+        if ("MONTHLY".equals(dto.getRecurringFrequency())) {
+            current = current.plusMonths(1);
+            while (!current.isAfter(endDate) && count < maxOccurrences) {
+                dates.add(current.atTime(dto.getEventDateTime().toLocalTime()));
+                current = current.plusMonths(1);
+                count++;
+            }
         } else {
-            event.setOrganizerName(dto.getOrganizerName());
+            current = current.plusDays(daysToAdd);
+            while (!current.isAfter(endDate) && count < maxOccurrences) {
+                dates.add(current.atTime(dto.getEventDateTime().toLocalTime()));
+                current = current.plusDays(daysToAdd);
+                count++;
+            }
         }
 
-        Event saved = eventRepository.save(event);
-
-        if (flagged) {
-            Report report = new Report();
-            report.setReporter(creator);
-            report.setReportType(ReportType.EVENT);
-            report.setReportedEvent(saved);
-            report.setReason("Auto-flagged: event content contained filtered language");
-            report.setStatus(ReportStatus.PENDING);
-            reportRepository.save(report);
-        }
-
-        return saved;
+        return dates;
     }
 
     // ── Update ────────────────────────────────────────────────────────────────
@@ -109,7 +183,17 @@ public class EventService {
             throw new SecurityException("You do not have permission to edit this event.");
         }
 
-        applyDto(event, dto);
+        Set<Tag> tags = new HashSet<>();
+        if (dto.getTagIds() != null && !dto.getTagIds().isEmpty()) {
+            tags = new HashSet<>(tagRepository.findAllById(dto.getTagIds()));
+        }
+
+        double[] coords = null;
+        if (dto.getCity() != null && !dto.getCity().isBlank()) {
+            coords = geocodingUtil.geocode(dto.getCity(), dto.getState());
+        }
+
+        applyDtoToEvent(event, dto, tags, coords);
 
         if (dto.isPostedByOrganizer()) {
             event.setOrganizerName(event.getCreator().getUsername());
@@ -215,7 +299,7 @@ public class EventService {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void applyDto(Event event, EventDto dto) {
+    private void applyDtoToEvent(Event event, EventDto dto, Set<Tag> tags, double[] coords) {
         event.setTitle(profanityFilter.filter(dto.getTitle()));
         event.setDescription(profanityFilter.filter(dto.getDescription()));
         event.setEventType(dto.getEventType());
@@ -226,25 +310,13 @@ public class EventService {
         event.setPostedByOrganizer(dto.isPostedByOrganizer());
         event.setOfficialSourceLink(dto.getOfficialSourceLink());
         event.setSourceType(dto.getSourceType());
+        event.setTags(tags);
         if (dto.getStatus() != null) {
             event.setStatus(dto.getStatus());
         }
-
-        // Apply tags
-        if (dto.getTagIds() != null && !dto.getTagIds().isEmpty()) {
-            Set<Tag> tags = new HashSet<>(tagRepository.findAllById(dto.getTagIds()));
-            event.setTags(tags);
-        } else {
-            event.setTags(new HashSet<>());
-        }
-
-        // Geocode for distance sorting
-        if (dto.getCity() != null && !dto.getCity().isBlank()) {
-            double[] coords = geocodingUtil.geocode(dto.getCity(), dto.getState());
-            if (coords != null) {
-                event.setLatitude(coords[0]);
-                event.setLongitude(coords[1]);
-            }
+        if (coords != null) {
+            event.setLatitude(coords[0]);
+            event.setLongitude(coords[1]);
         }
     }
 

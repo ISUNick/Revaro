@@ -9,10 +9,14 @@ import jakarta.validation.constraints.Size;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * DTO for the event create/edit form.
+ */
 public class EventDto {
 
     @NotBlank(message = "Event title is required")
@@ -38,27 +42,41 @@ public class EventDto {
     @Size(max = 300)
     private String address;
 
+    // Organizer fields
     private boolean postedByOrganizer = false;
 
     @Size(max = 150)
     private String organizerName;
 
+    // Source
     @Size(max = 500)
     private String officialSourceLink;
 
     private SourceType sourceType;
 
+    // Status (edit only)
     private EventStatus status;
 
+    // Image upload
     private MultipartFile imageFile;
 
+    // Existing image filename (edit mode — keep if no new upload)
     private String existingImage;
 
     private Double latitude;
     private Double longitude;
 
-    // Tag IDs selected in the tag picker
+    // Tags
     private List<Long> tagIds = new ArrayList<>();
+
+    // ── Recurring fields ──────────────────────────────────────────────────────
+    private boolean recurring = false;
+
+    // WEEKLY, BIWEEKLY, MONTHLY
+    private String recurringFrequency = "WEEKLY";
+
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    private LocalDate recurringEndDate;
 
     // ── Getters & Setters ─────────────────────────────────────────────────────
 
@@ -112,4 +130,13 @@ public class EventDto {
 
     public List<Long> getTagIds() { return tagIds; }
     public void setTagIds(List<Long> tagIds) { this.tagIds = tagIds != null ? tagIds : new ArrayList<>(); }
+
+    public boolean isRecurring() { return recurring; }
+    public void setRecurring(boolean recurring) { this.recurring = recurring; }
+
+    public String getRecurringFrequency() { return recurringFrequency; }
+    public void setRecurringFrequency(String recurringFrequency) { this.recurringFrequency = recurringFrequency; }
+
+    public LocalDate getRecurringEndDate() { return recurringEndDate; }
+    public void setRecurringEndDate(LocalDate recurringEndDate) { this.recurringEndDate = recurringEndDate; }
 }
