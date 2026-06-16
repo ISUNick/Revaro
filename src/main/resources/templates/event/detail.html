@@ -42,12 +42,16 @@
                 <i class="bi bi-car-front-fill"></i>
             </div>
 
-            <!-- Type badge -->
-            <div class="mb-2">
+            <!-- Type badge + tags -->
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
                 <span th:if="${event.eventType != null}"
                       class="event-type-badge"
                       th:classappend="${event.eventType.badgeClass}"
                       th:text="${event.eventType.displayName}">Type</span>
+                <span th:each="tag : ${event.tags}"
+                      th:if="${event.tags != null}"
+                      th:text="${tag.name}"
+                      th:style="'font-size:0.7rem;font-weight:600;padding:0.2rem 0.55rem;border-radius:20px;white-space:nowrap;background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';'">Tag</span>
             </div>
 
             <!-- Back link + report -->
