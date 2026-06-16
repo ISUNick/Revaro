@@ -9,10 +9,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * Seeds the predefined tag list on startup if tags table is empty.
- * Safe to run repeatedly — only seeds once.
- */
 @Component
 public class TagDataInitializer implements ApplicationRunner {
 
@@ -27,7 +23,6 @@ public class TagDataInitializer implements ApplicationRunner {
         if (tagRepository.count() > 0) return;
 
         tagRepository.saveAll(List.of(
-            // Style & Culture
             new Tag("JDM", TagCategory.STYLE),
             new Tag("Euro", TagCategory.STYLE),
             new Tag("American Muscle", TagCategory.STYLE),
@@ -38,16 +33,12 @@ public class TagDataInitializer implements ApplicationRunner {
             new Tag("Off-Road / 4x4", TagCategory.STYLE),
             new Tag("Truck", TagCategory.STYLE),
             new Tag("Motorcycle", TagCategory.STYLE),
-
-            // Vibe & Format
             new Tag("Cars and Coffee", TagCategory.VIBE),
             new Tag("Cruise Night", TagCategory.VIBE),
             new Tag("Meet and Greet", TagCategory.VIBE),
             new Tag("Pop-Up", TagCategory.VIBE),
             new Tag("Charity Event", TagCategory.VIBE),
             new Tag("Weekly Meet", TagCategory.VIBE),
-
-            // Performance
             new Tag("Time Attack", TagCategory.PERFORMANCE),
             new Tag("Drag Racing", TagCategory.PERFORMANCE),
             new Tag("Autocross", TagCategory.PERFORMANCE),
@@ -56,8 +47,6 @@ public class TagDataInitializer implements ApplicationRunner {
             new Tag("Road Course", TagCategory.PERFORMANCE),
             new Tag("Dyno Day", TagCategory.PERFORMANCE),
             new Tag("Roll Racing", TagCategory.PERFORMANCE),
-
-            // Brands
             new Tag("Honda", TagCategory.BRANDS),
             new Tag("Toyota", TagCategory.BRANDS),
             new Tag("Subaru", TagCategory.BRANDS),
@@ -71,8 +60,6 @@ public class TagDataInitializer implements ApplicationRunner {
             new Tag("Mitsubishi", TagCategory.BRANDS),
             new Tag("Supercar", TagCategory.BRANDS),
             new Tag("Jeep", TagCategory.BRANDS),
-
-            // Other
             new Tag("Family Friendly", TagCategory.OTHER),
             new Tag("Free Entry", TagCategory.OTHER),
             new Tag("Paid Entry", TagCategory.OTHER),

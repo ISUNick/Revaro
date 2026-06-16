@@ -1,5 +1,6 @@
 package com.revaro.entity;
 
+import com.revaro.entity.Tag;
 import com.revaro.enums.EventStatus;
 import com.revaro.enums.EventType;
 import com.revaro.enums.SourceType;
@@ -10,6 +11,8 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 
 @Entity
@@ -75,6 +78,14 @@ public class Event {
     @Column(nullable = false)
     private boolean recurring = false;
 
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "event_tags",
+        joinColumns = @JoinColumn(name = "event_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private Set<Tag> tags = new HashSet<>();
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EventStatus status = EventStatus.ACTIVE;
@@ -105,14 +116,6 @@ public class Event {
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt DESC")
     private List<ClaimRequest> claimRequests = new ArrayList<>();
-
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "event_tags",
-        joinColumns = @JoinColumn(name = "event_id"),
-        inverseJoinColumns = @JoinColumn(name = "tag_id")
-    )
-    private java.util.Set<com.revaro.entity.Tag> tags = new java.util.HashSet<>();
 
     // Transient — set by service layer, not loaded from DB
     @Transient
@@ -179,8 +182,8 @@ public class Event {
     public boolean isRecurring() { return recurring; }
     public void setRecurring(boolean recurring) { this.recurring = recurring; }
 
-    public java.util.Set<com.revaro.entity.Tag> getTags() { return tags; }
-    public void setTags(java.util.Set<com.revaro.entity.Tag> tags) { this.tags = tags; }
+    public Set<Tag> getTags() { return tags; }
+    public void setTags(Set<Tag> tags) { this.tags = tags; }
 
     public boolean isUpcoming() {
         return eventDateTime != null && eventDateTime.isAfter(LocalDateTime.now());

@@ -21,12 +21,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findByCreatorOrderByCreatedAtDesc(User creator);
     Page<Event> findByStatus(EventStatus status, Pageable pageable);
 
-    // ── Default feed: upcoming events only ────────────────────────────────────
-
     @Query("SELECT e FROM Event e WHERE e.eventDateTime >= :now")
     Page<Event> findUpcomingEvents(@Param("now") LocalDateTime now, Pageable pageable);
-
-    // ── Search: title, organizer, city, state, and tags ───────────────────────
 
     @Query("""
             SELECT DISTINCT e FROM Event e
@@ -41,8 +37,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             """)
     Page<Event> searchEvents(@Param("q") String query, Pageable pageable);
 
-    // ── Filter by tag name ────────────────────────────────────────────────────
-
     @Query("""
             SELECT DISTINCT e FROM Event e
             JOIN e.tags t
@@ -53,8 +47,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                               @Param("now") LocalDateTime now,
                               Pageable pageable);
 
-    // ── Search with tag filter ────────────────────────────────────────────────
-
     @Query("""
             SELECT DISTINCT e FROM Event e
             JOIN e.tags t
@@ -64,14 +56,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                 OR LOWER(COALESCE(e.organizerName,'')) LIKE LOWER(CONCAT('%', :q, '%'))
                 OR LOWER(COALESCE(e.city,'')) LIKE LOWER(CONCAT('%', :q, '%'))
                 OR LOWER(COALESCE(e.state,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(t.name,'')) LIKE LOWER(CONCAT('%', :q, '%'))
             )
             """)
     Page<Event> searchEventsWithTag(@Param("q") String query,
                                     @Param("tagName") String tagName,
                                     Pageable pageable);
-
-    // ── Filter by event type ──────────────────────────────────────────────────
 
     @Query("SELECT e FROM Event e WHERE e.eventType = :type AND e.eventDateTime >= :now")
     Page<Event> findByEventType(@Param("type") EventType type,
@@ -94,14 +83,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                    @Param("now") LocalDateTime now,
                                    Pageable pageable);
 
-    // ── Filter by state ───────────────────────────────────────────────────────
-
     @Query("SELECT e FROM Event e WHERE LOWER(COALESCE(e.state,'')) = LOWER(:state) AND e.eventDateTime >= :now")
     Page<Event> findByState(@Param("state") String state,
                             @Param("now") LocalDateTime now,
                             Pageable pageable);
 
-    // ── Admin ──────────────────────────────────────────────────────────────────
     Page<Event> findAllByOrderByCreatedAtDesc(Pageable pageable);
     long countByStatus(EventStatus status);
     long countByCreator(User creator);

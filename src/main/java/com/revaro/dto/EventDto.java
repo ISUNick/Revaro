@@ -14,9 +14,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DTO for the event create/edit form.
- */
 public class EventDto {
 
     @NotBlank(message = "Event title is required")
@@ -42,25 +39,20 @@ public class EventDto {
     @Size(max = 300)
     private String address;
 
-    // Organizer fields
     private boolean postedByOrganizer = false;
 
     @Size(max = 150)
     private String organizerName;
 
-    // Source
     @Size(max = 500)
     private String officialSourceLink;
 
     private SourceType sourceType;
 
-    // Status (edit only)
     private EventStatus status;
 
-    // Image upload
     private MultipartFile imageFile;
 
-    // Existing image filename (edit mode — keep if no new upload)
     private String existingImage;
 
     private Double latitude;
@@ -69,10 +61,8 @@ public class EventDto {
     // Tags
     private List<Long> tagIds = new ArrayList<>();
 
-    // ── Recurring fields ──────────────────────────────────────────────────────
+    // Recurring
     private boolean recurring = false;
-
-    // WEEKLY, BIWEEKLY, MONTHLY
     private String recurringFrequency = "WEEKLY";
 
     @DateTimeFormat(pattern = "yyyy-MM-dd")

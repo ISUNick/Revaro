@@ -70,7 +70,7 @@ public class EventService {
         boolean flagged = profanityFilter.containsProfanity(dto.getTitle())
                        || profanityFilter.containsProfanity(dto.getDescription());
 
-        // Upload image once — all recurring instances share the same URL
+        // Upload image once — shared across all recurring instances
         String imageUrl = null;
         if (dto.getImageFile() != null && !dto.getImageFile().isEmpty()) {
             imageUrl = fileUploadUtil.saveImage(dto.getImageFile());
@@ -88,8 +88,9 @@ public class EventService {
             tags = new HashSet<>(tagRepository.findAllById(dto.getTagIds()));
         }
 
-        // Build list of dates to create events for
+        // Build list of dates
         List<LocalDateTime> dates = buildRecurringDates(dto);
+        boolean isSeries = dates.size() > 1;
 
         Event firstSaved = null;
         for (LocalDateTime date : dates) {
@@ -99,14 +100,11 @@ public class EventService {
             event.setCreator(creator);
             event.setStatus(EventStatus.ACTIVE);
             event.setFeaturedImage(imageUrl);
+            event.setRecurring(isSeries);
             if (dto.isPostedByOrganizer()) {
                 event.setOrganizerName(creator.getUsername());
             } else {
                 event.setOrganizerName(dto.getOrganizerName());
-            }
-            // Mark recurring events with "(Series)" suffix if more than one date
-            if (dates.size() > 1) {
-                event.setRecurring(true);
             }
 
             Event saved = eventRepository.save(event);
@@ -126,10 +124,6 @@ public class EventService {
         return firstSaved;
     }
 
-    /**
-     * Build the list of dates for a recurring event.
-     * For non-recurring events, returns a single-element list.
-     */
     private List<LocalDateTime> buildRecurringDates(EventDto dto) {
         List<LocalDateTime> dates = new ArrayList<>();
         dates.add(dto.getEventDateTime());
@@ -142,14 +136,6 @@ public class EventService {
 
         LocalDate endDate = dto.getRecurringEndDate();
         LocalDate current = dto.getEventDateTime().toLocalDate();
-
-        int daysToAdd = switch (dto.getRecurringFrequency()) {
-            case "BIWEEKLY" -> 14;
-            case "MONTHLY"  -> 0; // handled separately
-            default         -> 7; // WEEKLY
-        };
-
-        // Cap at 52 occurrences to prevent runaway creation
         int maxOccurrences = 52;
         int count = 0;
 
@@ -161,10 +147,11 @@ public class EventService {
                 count++;
             }
         } else {
-            current = current.plusDays(daysToAdd);
+            int days = "BIWEEKLY".equals(dto.getRecurringFrequency()) ? 14 : 7;
+            current = current.plusDays(days);
             while (!current.isAfter(endDate) && count < maxOccurrences) {
                 dates.add(current.atTime(dto.getEventDateTime().toLocalTime()));
-                current = current.plusDays(daysToAdd);
+                current = current.plusDays(days);
                 count++;
             }
         }
