@@ -14,7 +14,6 @@
 
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
 
-<!-- Page hero -->
 <section class="page-hero">
     <div class="container-xl">
         <h1 th:text="${formMode == 'edit'} ? 'Edit Event' : 'Post an Event'">Post an Event</h1>
@@ -27,7 +26,6 @@
 
 <div class="container-xl mt-4" style="max-width: 780px;">
 
-    <!-- Error message -->
     <div th:if="${errorMessage}"
          class="alert alert-revaro-error d-flex align-items-center gap-2 py-2 px-3 mb-4">
         <i class="bi bi-exclamation-circle-fill"></i>
@@ -73,14 +71,30 @@
                 <div class="invalid-feedback" th:if="${#fields.hasErrors('eventType')}" th:errors="*{eventType}"></div>
             </div>
 
-            <!-- Date & Time -->
+            <!-- Date & Time — clean split UI with 15-min intervals -->
             <div class="mb-3">
-                <label for="eventDateTime" class="form-label">Date & Time <span style="color:var(--color-accent)">*</span></label>
-                <input type="datetime-local" id="eventDateTime"
-                       th:field="*{eventDateTime}"
-                       class="form-control"
-                       th:classappend="${#fields.hasErrors('eventDateTime')} ? 'is-invalid'"/>
-                <div class="invalid-feedback" th:if="${#fields.hasErrors('eventDateTime')}" th:errors="*{eventDateTime}"></div>
+                <label class="form-label">Date & Time <span style="color:var(--color-accent)">*</span></label>
+                <!-- Hidden field that holds the actual datetime value -->
+                <input type="hidden" id="eventDateTime" th:field="*{eventDateTime}"/>
+                <div class="d-flex gap-2 flex-wrap">
+                    <!-- Date picker -->
+                    <div style="flex:1;min-width:160px;">
+                        <input type="date" id="datePicker"
+                               class="form-control"
+                               th:classappend="${#fields.hasErrors('eventDateTime')} ? 'is-invalid'"
+                               th:value="${eventDto.eventDateTime != null ? #temporals.format(eventDto.eventDateTime, 'yyyy-MM-dd') : ''}"/>
+                    </div>
+                    <!-- Time picker — 15-min intervals -->
+                    <div style="flex:1;min-width:140px;">
+                        <select id="timePicker" class="form-select">
+                            <option value="">Select time...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('eventDateTime')}" th:errors="*{eventDateTime}"></div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.3rem;">
+                    Times are in 15-minute intervals (9:00, 9:15, 9:30...)
+                </div>
             </div>
 
             <!-- Description -->
@@ -92,10 +106,37 @@
             </div>
         </div>
 
+        <!-- ── SECTION: Tags ── -->
+        <div class="revaro-card p-4 mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h2 class="section-label mb-0">Tags</h2>
+                <button type="button"
+                        class="btn btn-outline-revaro btn-sm d-flex align-items-center gap-2"
+                        data-bs-toggle="modal" data-bs-target="#tagPickerModal">
+                    <i class="bi bi-tags"></i> Add Tags
+                </button>
+            </div>
+
+            <!-- Selected tags preview -->
+            <div id="selectedTagsDisplay" style="display:flex;flex-wrap:wrap;gap:0.4rem;min-height:28px;">
+                <span th:if="${#lists.isEmpty(eventDto.tagIds)}"
+                      id="noTagsMsg"
+                      style="font-size:0.8rem;color:var(--color-text-muted);">
+                    No tags selected — click "Add Tags" to choose some.
+                </span>
+            </div>
+
+            <!-- Hidden tag ID inputs (managed by JS) -->
+            <div id="tagIdInputs">
+                <input th:each="tagId : ${eventDto.tagIds}"
+                       type="hidden" name="tagIds"
+                       th:value="${tagId}"/>
+            </div>
+        </div>
+
         <!-- ── SECTION: Location ── -->
         <div class="revaro-card p-4 mb-4">
             <h2 class="section-label">Location</h2>
-
             <div class="row g-3">
                 <div class="col-12">
                     <label for="address" class="form-label">Street Address</label>
@@ -118,30 +159,21 @@
         <!-- ── SECTION: Organizer ── -->
         <div class="revaro-card p-4 mb-4">
             <h2 class="section-label">Organizer</h2>
-
-            <!-- Are you the organizer? -->
             <div class="mb-3">
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="radio"
                            name="postedByOrganizer" id="orgYes" value="true"
                            th:checked="${eventDto.postedByOrganizer}"/>
-                    <label class="form-check-label" for="orgYes">
-                        I am the organizer
-                    </label>
+                    <label class="form-check-label" for="orgYes">I am the organizer</label>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" type="radio"
                            name="postedByOrganizer" id="orgNo" value="false"
                            th:checked="${!eventDto.postedByOrganizer}"/>
-                    <label class="form-check-label" for="orgNo">
-                        I'm posting on behalf of another organizer
-                    </label>
+                    <label class="form-check-label" for="orgNo">I'm posting on behalf of another organizer</label>
                 </div>
             </div>
-
-            <!-- Organizer name (shown when posting on behalf) -->
-            <div id="organizerNameField"
-                 th:classappend="${eventDto.postedByOrganizer} ? 'd-none'">
+            <div id="organizerNameField" th:classappend="${eventDto.postedByOrganizer} ? 'd-none'">
                 <label for="organizerName" class="form-label">Organizer Name <span style="color:var(--color-accent)">*</span></label>
                 <input type="text" id="organizerName" th:field="*{organizerName}"
                        class="form-control"
@@ -155,7 +187,6 @@
         <!-- ── SECTION: Source ── -->
         <div class="revaro-card p-4 mb-4">
             <h2 class="section-label">Source & Link</h2>
-
             <div class="row g-3">
                 <div class="col-md-5">
                     <label for="sourceType" class="form-label">Source Type</label>
@@ -169,8 +200,7 @@
                 <div class="col-md-7">
                     <label for="officialSourceLink" class="form-label">Official Link</label>
                     <input type="url" id="officialSourceLink" th:field="*{officialSourceLink}"
-                           class="form-control"
-                           placeholder="https://facebook.com/events/..."/>
+                           class="form-control" placeholder="https://facebook.com/events/..."/>
                 </div>
             </div>
         </div>
@@ -178,26 +208,22 @@
         <!-- ── SECTION: Image ── -->
         <div class="revaro-card p-4 mb-4">
             <h2 class="section-label">Featured Image</h2>
-
-            <!-- Show existing image in edit mode -->
-            <div th:if="${eventDto.existingImage != null and !eventDto.existingImage.isEmpty()}"
+            <div th:if="${eventDto.existingImage != null and !#strings.isEmpty(eventDto.existingImage)}"
                  class="mb-3">
                 <p class="form-label">Current Image</p>
-                <img th:src=${eventDto.existingImage}
+                <img th:src="${eventDto.existingImage}"
                      alt="Current event image"
                      style="max-height: 200px; border-radius: var(--radius-md); border: 1px solid var(--color-border);"/>
                 <p class="mt-2" style="font-size: 0.8rem; color: var(--color-text-muted);">
                     Upload a new image below to replace it.
                 </p>
             </div>
-
-            <label for="imageFile" class="form-label">
-                <span th:text="${eventDto.existingImage != null} ? 'Replace Image' : 'Upload Image'">Upload Image</span>
-            </label>
+            <label for="imageFile" class="form-label"
+                   th:text="${eventDto.existingImage != null} ? 'Replace Image' : 'Upload Image'">Upload Image</label>
             <input type="file" id="imageFile" name="imageFile"
                    class="form-control" accept="image/jpeg,image/png,image/webp,image/gif"/>
             <div class="mt-1" style="font-size: 0.8rem; color: var(--color-text-muted);">
-                Accepted: JPG, PNG, WebP, GIF. Max 10 MB. (Recommended: 800x600 for best display)
+                Accepted: JPG, PNG, WebP, GIF. Max 10 MB. Recommended: 800×600px or wider.
             </div>
         </div>
 
@@ -218,14 +244,11 @@
                 <span th:text="${formMode == 'edit'} ? 'Save Changes' : 'Post Event'">Post Event</span>
             </button>
             <a th:href="${formMode == 'edit'} ? @{/events/{id}(id=${event.id})} : @{/}"
-               class="btn btn-outline-revaro px-4 py-2">
-                Cancel
-            </a>
+               class="btn btn-outline-revaro px-4 py-2">Cancel</a>
 
-            <!-- Delete button (edit only) -->
             <div th:if="${formMode == 'edit'}" class="ms-auto">
                 <button type="button" class="btn btn-sm"
-                        style="color: var(--color-accent); border: 1px solid var(--color-accent); border-radius: var(--radius-sm); padding: 0.4rem 0.9rem;"
+                        style="color:var(--color-accent);border:1px solid var(--color-accent);border-radius:var(--radius-sm);padding:0.4rem 0.9rem;"
                         data-bs-toggle="modal" data-bs-target="#deleteModal">
                     <i class="bi bi-trash me-1"></i>Delete Event
                 </button>
@@ -234,29 +257,72 @@
     </form>
 </div>
 
-<!-- Delete confirmation modal -->
-<div th:if="${formMode == 'edit'}"
-     class="modal fade" id="deleteModal" tabindex="-1">
+<!-- ── TAG PICKER MODAL ── -->
+<div class="modal fade" id="tagPickerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content"
+             style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);">
+            <div class="modal-header" style="border-color:var(--color-border-subtle);padding:1.25rem 1.5rem;">
+                <h5 class="modal-title" style="font-weight:700;">Add Tags</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;max-height:65vh;overflow-y:auto;">
+                <p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1.25rem;">
+                    Select tags to help people find your event. Choose as many as apply.
+                </p>
+
+                <div th:each="category : ${T(com.revaro.enums.TagCategory).values()}" class="mb-4">
+                    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;
+                                letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:0.6rem;"
+                         th:text="${category.displayName}">Category</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+                        <label th:each="tag : ${allTags}"
+                               th:if="${tag.category == category}"
+                               class="tag-modal-label"
+                               th:data-tag-id="${tag.id}"
+                               th:data-tag-name="${tag.name}"
+                               th:data-tag-bg="${tag.category.bgColor}"
+                               th:data-tag-color="${tag.category.textColor}">
+                            <input type="checkbox"
+                                   th:value="${tag.id}"
+                                   th:checked="${eventDto.tagIds != null and eventDto.tagIds.contains(tag.id)}"
+                                   class="tag-modal-checkbox"
+                                   style="display:none;"/>
+                            <span class="tag-modal-chip"
+                                  th:text="${tag.name}"
+                                  th:style="'background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';'">Tag</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-color:var(--color-border-subtle);padding:1rem 1.5rem;justify-content:space-between;">
+                <span id="selectedTagCount" style="font-size:0.8rem;color:var(--color-text-muted);">0 tags selected</span>
+                <button type="button" class="btn btn-primary-revaro" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── DELETE MODAL ── -->
+<div th:if="${formMode == 'edit'}" class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content"
-             style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
-            <div class="modal-header" style="border-color: var(--color-border);">
+             style="background-color:var(--color-surface);border:1px solid var(--color-border);">
+            <div class="modal-header" style="border-color:var(--color-border);">
                 <h5 class="modal-title">Delete Event</h5>
-                <button type="button" class="btn-close btn-close-white"
-                        data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" style="color: var(--color-text-muted);">
+            <div class="modal-body" style="color:var(--color-text-muted);">
                 Are you sure you want to delete
-                <strong style="color: var(--color-text);" th:text="${event.title}">this event</strong>?
+                <strong style="color:var(--color-text);" th:text="${event.title}">this event</strong>?
                 This cannot be undone.
             </div>
-            <div class="modal-footer" style="border-color: var(--color-border);">
-                <button type="button" class="btn btn-outline-revaro"
-                        data-bs-dismiss="modal">Cancel</button>
+            <div class="modal-footer" style="border-color:var(--color-border);">
+                <button type="button" class="btn btn-outline-revaro" data-bs-dismiss="modal">Cancel</button>
                 <form th:action="@{/events/{id}/delete(id=${event.id})}" method="post" style="margin:0;">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <button type="submit" class="btn btn-sm"
-                            style="background: var(--color-accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 0.45rem 1rem;">
+                            style="background:var(--color-accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:0.45rem 1rem;">
                         Yes, Delete
                     </button>
                 </form>
@@ -269,33 +335,163 @@
 <div th:replace="~{fragments/layout :: scripts}"></div>
 
 <script>
-// Toggle organizer name field based on radio selection
+// ── Organizer field toggle ──────────────────────────────────────────────────
 document.querySelectorAll('input[name="postedByOrganizer"]').forEach(radio => {
     radio.addEventListener('change', function() {
         const nameField = document.getElementById('organizerNameField');
-        if (this.value === 'true') {
-            nameField.classList.add('d-none');
-        } else {
-            nameField.classList.remove('d-none');
-        }
+        nameField.classList.toggle('d-none', this.value === 'true');
     });
 });
-</script>
 
-<script>
-// Image crop preview for event form
-const imageInput = document.getElementById('imageFile');
-if (imageInput) {
-    imageInput.addEventListener('change', function() {
-        const file = this.files[0];
-        if (!file) return;
-        const preview = document.getElementById('imagePreview');
-        if (preview) {
-            preview.src = URL.createObjectURL(file);
-            preview.style.display = 'block';
+// ── Date + Time picker → hidden datetime field ──────────────────────────────
+(function() {
+    const datePicker = document.getElementById('datePicker');
+    const timePicker = document.getElementById('timePicker');
+    const hidden     = document.getElementById('eventDateTime');
+
+    // Populate 15-minute interval time options
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 15) {
+            const val   = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+            const hour  = h % 12 === 0 ? 12 : h % 12;
+            const ampm  = h < 12 ? 'AM' : 'PM';
+            const label = hour + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+            const opt   = new Option(label, val);
+            timePicker.appendChild(opt);
+        }
+    }
+
+    // Pre-select existing value on edit
+    if (hidden.value) {
+        const parts = hidden.value.split('T');
+        if (parts.length === 2) {
+            datePicker.value = parts[0];
+            // Round to nearest 15 min
+            const timeParts = parts[1].substring(0,5).split(':');
+            const h = timeParts[0];
+            const m = Math.round(parseInt(timeParts[1]) / 15) * 15;
+            const mStr = m === 60 ? '00' : String(m).padStart(2,'0');
+            timePicker.value = h + ':' + mStr;
+        }
+    }
+
+    function updateHidden() {
+        if (datePicker.value && timePicker.value) {
+            hidden.value = datePicker.value + 'T' + timePicker.value;
+        }
+    }
+
+    datePicker.addEventListener('change', updateHidden);
+    timePicker.addEventListener('change', updateHidden);
+})();
+
+// ── Tag Picker ──────────────────────────────────────────────────────────────
+(function() {
+    // Track selected tags: Map<id, {name, bg, color}>
+    const selectedTags = new Map();
+
+    // Pre-populate from existing hidden inputs
+    document.querySelectorAll('#tagIdInputs input[name="tagIds"]').forEach(input => {
+        const label = document.querySelector('.tag-modal-label[data-tag-id="' + input.value + '"]');
+        if (label) {
+            selectedTags.set(input.value, {
+                name:  label.dataset.tagName,
+                bg:    label.dataset.tagBg,
+                color: label.dataset.tagColor
+            });
         }
     });
-}
+
+    // Sync checkboxes with selectedTags on modal open
+    document.getElementById('tagPickerModal').addEventListener('show.bs.modal', function() {
+        document.querySelectorAll('.tag-modal-checkbox').forEach(cb => {
+            const label = cb.closest('.tag-modal-label');
+            cb.checked = selectedTags.has(label.dataset.tagId);
+            updateChipStyle(cb);
+        });
+        updateCount();
+    });
+
+    // Handle checkbox changes in modal
+    document.querySelectorAll('.tag-modal-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const label = this.closest('.tag-modal-label');
+            const id    = label.dataset.tagId;
+            if (this.checked) {
+                selectedTags.set(id, {
+                    name:  label.dataset.tagName,
+                    bg:    label.dataset.tagBg,
+                    color: label.dataset.tagColor
+                });
+            } else {
+                selectedTags.delete(id);
+            }
+            updateChipStyle(this);
+            updateCount();
+        });
+    });
+
+    function updateChipStyle(cb) {
+        const chip = cb.nextElementSibling;
+        if (cb.checked) {
+            chip.style.outline = '2px solid white';
+            chip.style.outlineOffset = '1px';
+            chip.style.transform = 'translateY(-1px)';
+        } else {
+            chip.style.outline = '';
+            chip.style.outlineOffset = '';
+            chip.style.transform = '';
+        }
+    }
+
+    function updateCount() {
+        const el = document.getElementById('selectedTagCount');
+        if (el) el.textContent = selectedTags.size + ' tag' + (selectedTags.size !== 1 ? 's' : '') + ' selected';
+    }
+
+    // On modal close — sync hidden inputs and preview
+    document.getElementById('tagPickerModal').addEventListener('hidden.bs.modal', function() {
+        // Rebuild hidden inputs
+        const container = document.getElementById('tagIdInputs');
+        container.innerHTML = '';
+        selectedTags.forEach((info, id) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'tagIds';
+            input.value = id;
+            container.appendChild(input);
+        });
+
+        // Rebuild preview chips
+        const display = document.getElementById('selectedTagsDisplay');
+        display.innerHTML = '';
+        if (selectedTags.size === 0) {
+            display.innerHTML = '<span style="font-size:0.8rem;color:var(--color-text-muted);">No tags selected — click "Add Tags" to choose some.</span>';
+        } else {
+            selectedTags.forEach((info, id) => {
+                const span = document.createElement('span');
+                span.textContent = info.name;
+                span.style.cssText = 'font-size:0.75rem;font-weight:600;padding:0.25rem 0.65rem;border-radius:20px;background:' + info.bg + ';color:' + info.color + ';';
+                display.appendChild(span);
+            });
+        }
+    });
+
+    // Style the modal chips
+    const style = document.createElement('style');
+    style.textContent = `
+        .tag-modal-label { cursor:pointer; margin:0; }
+        .tag-modal-chip {
+            display:inline-flex; align-items:center;
+            padding:0.3rem 0.75rem; border-radius:20px;
+            font-size:0.78rem; font-weight:600;
+            cursor:pointer; user-select:none;
+            transition:transform 0.1s, outline 0.1s;
+        }
+        .tag-modal-chip:hover { filter:brightness(1.12); }
+    `;
+    document.head.appendChild(style);
+})();
 </script>
 </body>
 </html>

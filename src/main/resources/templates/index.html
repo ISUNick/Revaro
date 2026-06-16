@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org"
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8"/>
@@ -26,59 +27,170 @@
     </div>
 </section>
 
-<!-- Search & Filter -->
+<!-- Search & Filter Bar -->
 <section class="search-filter-bar">
     <div class="container-xl">
-        <form method="get" th:action="@{/}" class="row g-2 align-items-center">
-            <div class="col-12 col-md-4 col-lg-5">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-search" style="font-size:0.8rem;"></i></span>
-                    <input type="text" class="form-control" name="q"
-                           th:value="${param.q}" placeholder="Search events, organizers, cities..."/>
+        <form method="get" th:action="@{/}" id="searchForm">
+
+            <!-- Main row: search + buttons -->
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+
+                <!-- Search input -->
+                <div class="flex-grow-1" style="min-width:200px;">
+                    <div class="input-group">
+                        <span class="input-group-text" style="background:var(--color-surface-raised);border-color:var(--color-border);">
+                            <i class="bi bi-search" style="font-size:0.8rem;color:var(--color-text-muted);"></i>
+                        </span>
+                        <input type="text" class="form-control" name="q"
+                               th:value="${param.q}"
+                               placeholder="Search events, tags, cities, organizers..."
+                               autocomplete="off"/>
+                    </div>
+                </div>
+
+                <!-- Filters toggle -->
+                <button type="button" onclick="toggleFilters()" id="filterToggle"
+                        class="btn btn-outline-revaro d-flex align-items-center gap-2"
+                        style="white-space:nowrap;">
+                    <i class="bi bi-sliders"></i>
+                    Filters
+                    <span th:if="${(param.type != null and param.type[0] != '') or (param.state != null and param.state[0] != '') or param.tag != null}"
+                          style="background:var(--color-primary);color:#fff;border-radius:20px;font-size:0.65rem;padding:0.1rem 0.45rem;font-weight:700;">
+                        &#x2713;
+                    </span>
+                </button>
+
+                <!-- Sort dropdown -->
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-revaro dropdown-toggle d-flex align-items-center gap-2"
+                            data-bs-toggle="dropdown" style="white-space:nowrap;">
+                        <i class="bi bi-sort-down-alt"></i>
+                        <span id="sortLabel"
+                              th:text="${param.sort == null or param.sort[0] == 'relevance' ? 'Relevance' :
+                                         (param.sort[0] == 'date' ? 'Date' :
+                                         (param.sort[0] == 'newest' ? 'Newest' : 'Distance'))}">Relevance</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end"
+                        style="background:var(--color-surface);border-color:var(--color-border);min-width:160px;">
+                        <li>
+                            <button type="button" class="dropdown-item sort-option"
+                                    data-sort="relevance"
+                                    th:style="${param.sort == null or param.sort[0] == 'relevance'} ? 'color:var(--color-primary-light);font-weight:600;' : 'color:var(--color-text-muted);'">
+                                <i class="bi bi-stars me-2"></i>Relevance
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item sort-option"
+                                    data-sort="date"
+                                    th:style="${param.sort != null and param.sort[0] == 'date'} ? 'color:var(--color-primary-light);font-weight:600;' : 'color:var(--color-text-muted);'">
+                                <i class="bi bi-calendar3 me-2"></i>Date
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item sort-option"
+                                    data-sort="newest"
+                                    th:style="${param.sort != null and param.sort[0] == 'newest'} ? 'color:var(--color-primary-light);font-weight:600;' : 'color:var(--color-text-muted);'">
+                                <i class="bi bi-clock me-2"></i>Newest
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item sort-option"
+                                    data-sort="distance"
+                                    th:style="${param.sort != null and param.sort[0] == 'distance'} ? 'color:var(--color-primary-light);font-weight:600;' : 'color:var(--color-text-muted);'">
+                                <i class="bi bi-geo-alt me-2"></i>Distance
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Search submit -->
+                <button type="submit" class="btn btn-primary-revaro">
+                    <i class="bi bi-search"></i>
+                </button>
+
+                <!-- Hidden sort value -->
+                <input type="hidden" name="sort" id="hiddenSort"
+                       th:value="${param.sort != null ? param.sort[0] : 'relevance'}"/>
+            </div>
+
+            <!-- Expandable filter panel -->
+            <div id="filterPanel"
+                 th:style="${(param.type != null and param.type[0] != '') or (param.state != null and param.state[0] != '') or param.tag != null} ? 'display:block;' : 'display:none;'"
+                 style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--color-border-subtle);">
+
+                <div class="d-flex gap-3 flex-wrap align-items-start">
+
+                    <!-- Event type -->
+                    <div style="min-width:140px;">
+                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:0.4rem;">Event Type</div>
+                        <select class="form-select form-select-sm" name="type" onchange="this.form.submit()" style="font-size:0.825rem;">
+                            <option value="">All Types</option>
+                            <option value="CAR_MEET"         th:selected="${param.type != null and param.type[0] == 'CAR_MEET'}">Car Meet</option>
+                            <option value="CAR_SHOW"         th:selected="${param.type != null and param.type[0] == 'CAR_SHOW'}">Car Show</option>
+                            <option value="CRUISE"           th:selected="${param.type != null and param.type[0] == 'CRUISE'}">Cruise</option>
+                            <option value="TRACK_DAY"        th:selected="${param.type != null and param.type[0] == 'TRACK_DAY'}">Track Day</option>
+                            <option value="DRAG_STRIP_EVENT" th:selected="${param.type != null and param.type[0] == 'DRAG_STRIP_EVENT'}">Drag Strip</option>
+                            <option value="OTHER"            th:selected="${param.type != null and param.type[0] == 'OTHER'}">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- State -->
+                    <div style="min-width:100px;">
+                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:0.4rem;">State</div>
+                        <input type="text" class="form-control form-control-sm" name="state"
+                               th:value="${param.state}" placeholder="e.g. IL"
+                               style="font-size:0.825rem;max-width:90px;"/>
+                    </div>
+
+                    <!-- Tags -->
+                    <div th:if="${allTags != null}" style="flex:1;min-width:200px;">
+                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:0.4rem;">Tags</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:0.3rem;">
+                            <label th:each="tag : ${allTags}" style="cursor:pointer;margin:0;">
+                                <input type="checkbox" name="tag" th:value="${tag.name}"
+                                       th:checked="${param.tag != null and #lists.contains(param.tag, tag.name)}"
+                                       style="display:none;" onchange="this.closest('form').submit()"/>
+                                <span th:text="${tag.name}"
+                                      style="display:inline-flex;align-items:center;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid;transition:all 0.12s;"
+                                      th:style="${param.tag != null and #lists.contains(param.tag, tag.name)} ?
+                                          'background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';border-color:' + ${tag.category.textColor} + ';' :
+                                          'background:var(--color-surface-raised);color:var(--color-text-muted);border-color:var(--color-border);'">Tag</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Clear -->
+                    <div style="align-self:flex-end;">
+                        <a th:href="@{/}" class="btn btn-sm"
+                           style="font-size:0.75rem;color:var(--color-text-muted);border:1px solid var(--color-border-subtle);">
+                            <i class="bi bi-x me-1"></i>Clear
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div class="col-6 col-md-2">
-                <input type="text" class="form-control" name="state"
-                       th:value="${param.state}" placeholder="State (e.g. IL)"/>
+
+            <!-- Active tag pills -->
+            <div th:if="${param.tag != null}" class="d-flex flex-wrap gap-2 mt-2">
+                <span th:each="activeTag : ${param.tag}"
+                      style="font-size:0.72rem;background:var(--color-surface-raised);border:1px solid var(--color-border);
+                             border-radius:20px;padding:0.2rem 0.6rem;color:var(--color-text-muted);"
+                      th:text="${activeTag}">Tag</span>
             </div>
-            <div class="col-6 col-md-2">
-                <select class="form-select" name="type">
-                    <option value="">All Types</option>
-                    <option value="CAR_MEET"         th:selected="${param.type == 'CAR_MEET'}">Car Meet</option>
-                    <option value="CAR_SHOW"         th:selected="${param.type == 'CAR_SHOW'}">Car Show</option>
-                    <option value="CRUISE"           th:selected="${param.type == 'CRUISE'}">Cruise</option>
-                    <option value="TRACK_DAY"        th:selected="${param.type == 'TRACK_DAY'}">Track Day</option>
-                    <option value="DRAG_STRIP_EVENT" th:selected="${param.type == 'DRAG_STRIP_EVENT'}">Drag Strip Event</option>
-                    <option value="OTHER"            th:selected="${param.type == 'OTHER'}">Other</option>
-                </select>
-            </div>
-            <div class="col-6 col-md-2">
-                <select class="form-select" name="sort">
-                    <option value="relevance" th:selected="${param.sort == null or param.sort[0] == 'relevance'}">Sort: Relevance</option>
-                    <option value="date"      th:selected="${param.sort != null and param.sort[0] == 'date'}">Sort: Date</option>
-                    <option value="newest"    th:selected="${param.sort != null and param.sort[0] == 'newest'}">Sort: Newest</option>
-                    <option value="distance"  th:selected="${param.sort != null and param.sort[0] == 'distance'}">Sort: Distance</option>
-                </select>
-            </div>
-            <div class="col-6 col-md-2 col-lg-1">
-                <button type="submit" class="btn btn-primary-revaro w-100 justify-content-center">
-                    <i class="bi bi-funnel"></i>
-                </button>
-            </div>
+
         </form>
     </div>
 </section>
 
-<!-- Feed -->
-<div class="container-xl mt-4" style="min-height: 60vh;">
+<!-- Event Feed -->
+<div class="container-xl mt-4" style="min-height:60vh;">
 
     <div class="d-flex align-items-center justify-content-between mb-3">
-        <p class="text-muted-revaro mb-0" style="font-size: 0.85rem;">
-            <span th:if="${events != null}" th:text="${events.totalElements} + ' events found'">0 events</span>
+        <p style="font-size:0.875rem;color:var(--color-text-muted);margin:0;">
+            <span th:if="${events != null}" th:text="${events.totalElements} + ' events found'">0 events found</span>
         </p>
         <a th:href="@{/events/create}" sec:authorize="isAuthenticated()"
-           class="btn btn-primary-revaro btn-sm gap-1">
-            <i class="bi bi-plus-lg"></i>Post Event
+           class="btn btn-primary-revaro btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Post Event
         </a>
     </div>
 
@@ -86,12 +198,17 @@
     <div th:if="${events != null and !events.empty}">
         <div th:each="event : ${events}"
              class="event-card"
-             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},data-lng=${event.longitude != null ? event.longitude : ''},data-eventdate=${event.eventDateTime != null ? event.eventDateTime : ''},data-url=@{/events/{id}(id=${event.id})}">
+             style="cursor:pointer;"
+             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},
+                      data-lng=${event.longitude != null ? event.longitude : ''},
+                      data-eventdate=${event.eventDateTime != null ? event.eventDateTime : ''},
+                      data-url=@{/events/{id}(id=${event.id})}">
             <div class="event-card-inner">
 
-                <!-- Body -->
+                <!-- Left: info -->
                 <div class="event-card-body">
-                    <!-- Type badge + status banners -->
+
+                    <!-- Badges -->
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span th:if="${event.eventType != null}"
                               class="event-type-badge"
@@ -117,7 +234,7 @@
                     <!-- Title -->
                     <h2 class="event-card-title">
                         <a th:href="@{/events/{id}(id=${event.id})}"
-                           style="color: inherit; text-decoration: none;"
+                           style="color:inherit;text-decoration:none;"
                            th:text="${event.title}">Event Title</a>
                     </h2>
 
@@ -126,12 +243,11 @@
                         <i class="bi bi-person-fill me-1"></i>
                         <a th:if="${event.creator != null}"
                            th:href="@{/profile/{u}(u=${event.creator.username})}"
-                           style="color: var(--color-text-muted);"
+                           style="color:var(--color-text-muted);"
                            th:text="${event.organizerName != null ? event.organizerName : event.creator.username}">Organizer</a>
                         <span th:unless="${event.creator != null}"
                               th:text="${event.organizerName != null ? event.organizerName : 'Community Event'}">Organizer</span>
-                        <span th:if="${event.postedByOrganizer}"
-                              style="color: var(--color-going); margin-left: 0.3rem;">
+                        <span th:if="${event.postedByOrganizer}" style="color:var(--color-going);margin-left:0.3rem;">
                             <i class="bi bi-patch-check-fill"></i>
                         </span>
                     </p>
@@ -149,7 +265,15 @@
                         </span>
                     </div>
 
-                    <!-- RSVP counts -->
+                    <!-- Tags -->
+                    <div th:if="${event.tags != null and !event.tags.empty}"
+                         style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;">
+                        <span th:each="tag : ${event.tags}"
+                              th:text="${tag.name}"
+                              th:style="'font-size:0.63rem;font-weight:600;padding:0.15rem 0.45rem;border-radius:20px;white-space:nowrap;background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';'">Tag</span>
+                    </div>
+
+                    <!-- RSVP -->
                     <div class="event-rsvp-row">
                         <span class="rsvp-count going">
                             <i class="bi bi-check-circle-fill"></i>
@@ -167,13 +291,13 @@
                             View Event <i class="bi bi-arrow-right"></i>
                         </a>
                         <span th:if="${event.createdAt != null}"
-                              style="font-size: 0.72rem; color: var(--color-text-muted);">
+                              style="font-size:0.72rem;color:var(--color-text-muted);">
                             Posted: <span th:text="${#temporals.format(event.createdAt, 'MMM d')}">Jan 1</span>
                         </span>
                     </div>
                 </div>
 
-                <!-- Image -->
+                <!-- Right: image -->
                 <div class="event-card-image-wrap">
                     <div th:if="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
                          class="event-card-image-box">
@@ -195,47 +319,61 @@
     <div th:if="${events == null or events.empty}" class="empty-state">
         <div class="empty-state-icon"><i class="bi bi-car-front-fill"></i></div>
         <div class="empty-state-title">No events found</div>
-        <p class="mb-3">No upcoming events match your search. Be the first to post one!</p>
+        <p class="mb-3">No upcoming events match your search.</p>
         <a th:href="@{/events/create}" sec:authorize="isAuthenticated()" class="btn btn-primary-revaro">
             Post an Event
         </a>
     </div>
 
-</div>
+    <!-- Pagination -->
+    <div th:if="${events != null and events.totalPages > 1}"
+         style="padding-top:1.5rem;padding-bottom:2rem;display:flex;align-items:center;justify-content:center;gap:0.75rem;flex-wrap:wrap;">
+        <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},tag=${param.tag},sort=${param.sort},page=${events.number - 1})}"
+           th:style="${events.first} ? 'opacity:0.3;pointer-events:none;' : ''"
+           style="color:var(--color-text-muted);text-decoration:none;font-size:0.9rem;">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <a th:each="i : ${#numbers.sequence(0, events.totalPages - 1)}"
+           th:href="@{/(q=${param.q},state=${param.state},type=${param.type},tag=${param.tag},sort=${param.sort},page=${i})}"
+           th:text="${i + 1}"
+           th:style="${events.number == i} ? 'color:var(--color-primary-light);font-weight:700;' : 'color:var(--color-text-muted);'"
+           style="text-decoration:none;font-size:0.95rem;padding:0 0.25rem;">1</a>
+        <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},tag=${param.tag},sort=${param.sort},page=${events.number + 1})}"
+           th:style="${events.last} ? 'opacity:0.3;pointer-events:none;' : ''"
+           style="color:var(--color-text-muted);text-decoration:none;font-size:0.9rem;">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
 
-<!-- Pagination — sits after all event cards -->
-<div th:if="${events != null and events.totalPages > 1}"
-     class="container-xl"
-     style="padding-top:1.5rem;padding-bottom:2rem;display:flex;align-items:center;justify-content:center;gap:0.75rem;flex-wrap:wrap;">
-
-    <!-- Prev -->
-    <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number - 1})}"
-       th:style="${events.first} ? 'opacity:0.3;pointer-events:none;' : ''"
-       style="color:var(--color-text-muted);text-decoration:none;font-size:0.9rem;">
-        <i class="bi bi-chevron-left"></i>
-    </a>
-
-    <!-- Page numbers -->
-    <a th:each="i : ${#numbers.sequence(0, events.totalPages - 1)}"
-       th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${i})}"
-       th:text="${i + 1}"
-       th:style="${events.number == i} ? 'color:var(--color-primary-light);font-weight:700;' : 'color:var(--color-text-muted);'"
-       style="text-decoration:none;font-size:0.95rem;padding:0 0.25rem;">
-        1
-    </a>
-
-    <!-- Next -->
-    <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},sort=${param.sort},page=${events.number + 1})}"
-       th:style="${events.last} ? 'opacity:0.3;pointer-events:none;' : ''"
-       style="color:var(--color-text-muted);text-decoration:none;font-size:0.9rem;">
-        <i class="bi bi-chevron-right"></i>
-    </a>
 </div>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script>
 (function() {
+    // Toggle filter panel
+    window.toggleFilters = function() {
+        var panel = document.getElementById('filterPanel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    };
+
+    // Sort dropdown
+    document.querySelectorAll('.sort-option').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('hiddenSort').value = this.dataset.sort;
+            document.getElementById('searchForm').submit();
+        });
+    });
+
+    // Clickable cards
+    document.querySelectorAll('.event-card[data-url]').forEach(function(card) {
+        card.addEventListener('click', function(e) {
+            if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) return;
+            window.location.href = card.dataset.url;
+        });
+    });
+
+    // Distance / relevance
     function haversine(lat1, lng1, lat2, lng2) {
         var R = 3958.8;
         var dLat = (lat2 - lat1) * Math.PI / 180;
@@ -269,8 +407,8 @@
             var lng = parseFloat(card.dataset.lng);
             if (isNaN(lat) || isNaN(lng)) return;
             var miles = haversine(userLat, userLng, lat, lng);
-            var distEl = card.querySelector('.event-distance-label');
-            if (distEl) distEl.textContent = '· ' + (miles < 1 ? '< 1 mi' : Math.round(miles) + ' mi');
+            var el = card.querySelector('.event-distance-label');
+            if (el) el.textContent = '· ' + (miles < 1 ? '< 1 mi' : Math.round(miles) + ' mi');
         });
     }
 
@@ -285,12 +423,12 @@
                 return relevanceScore(a, userLat, userLng, nowMs) - relevanceScore(b, userLat, userLng, nowMs);
             });
         } else if (mode === 'distance') {
-            if (userLat === null || userLng === null) return;
+            if (userLat === null) return;
             cards.sort(function(a, b) {
                 var aLat = parseFloat(a.dataset.lat), aLng = parseFloat(a.dataset.lng);
                 var bLat = parseFloat(b.dataset.lat), bLng = parseFloat(b.dataset.lng);
-                if (isNaN(aLat) || isNaN(aLng)) return 1;
-                if (isNaN(bLat) || isNaN(bLng)) return -1;
+                if (isNaN(aLat)) return 1;
+                if (isNaN(bLat)) return -1;
                 return haversine(userLat, userLng, aLat, aLng) - haversine(userLat, userLng, bLat, bLng);
             });
         }
@@ -317,37 +455,7 @@
             localStorage.setItem('revaro_lng', lng);
             showDistances(lat, lng);
             sortCards(currentSort, lat, lng);
-        }, function() {
-            if (currentSort === 'relevance' && !hasCache) sortCards('relevance', null, null);
-        });
-    }
-
-    // Make entire card clickable
-    document.querySelectorAll('.event-card[data-url]').forEach(function(card) {
-        card.style.cursor = 'pointer';
-        card.addEventListener('click', function(e) {
-            // Don't navigate if they clicked a link or button inside the card
-            if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) return;
-            window.location.href = card.dataset.url;
-        });
-    });
-
-    var sortSelect = document.querySelector('select[name="sort"]');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', function() {
-            if (this.value !== 'distance' && this.value !== 'relevance') return;
-            if (!isNaN(parseFloat(localStorage.getItem('revaro_lat')))) return;
-            var form = this.closest('form');
-            form.addEventListener('submit', function(e) {
-                if (!navigator.geolocation) return;
-                e.preventDefault();
-                navigator.geolocation.getCurrentPosition(function(pos) {
-                    localStorage.setItem('revaro_lat', pos.coords.latitude);
-                    localStorage.setItem('revaro_lng', pos.coords.longitude);
-                    form.submit();
-                }, function() { form.submit(); });
-            }, { once: true });
-        });
+        }, function() {});
     }
 })();
 </script>

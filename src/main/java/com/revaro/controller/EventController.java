@@ -6,9 +6,9 @@ import com.revaro.entity.Event;
 import com.revaro.entity.User;
 import com.revaro.enums.EventStatus;
 import com.revaro.enums.EventType;
-import com.revaro.enums.RsvpStatus;
 import com.revaro.enums.SourceType;
 import com.revaro.repository.CommentLikeRepository;
+import com.revaro.repository.TagRepository;
 import com.revaro.security.UserDetailsImpl;
 import com.revaro.service.CommentService;
 import com.revaro.service.EventService;
@@ -35,21 +35,25 @@ public class EventController {
     private final RsvpService rsvpService;
     private final CommentService commentService;
     private final CommentLikeRepository commentLikeRepository;
+    private final TagRepository tagRepository;
 
     public EventController(EventService eventService,
                            RsvpService rsvpService,
                            CommentService commentService,
-                           CommentLikeRepository commentLikeRepository) {
+                           CommentLikeRepository commentLikeRepository,
+                           TagRepository tagRepository) {
         this.eventService = eventService;
         this.rsvpService = rsvpService;
         this.commentService = commentService;
         this.commentLikeRepository = commentLikeRepository;
+        this.tagRepository = tagRepository;
     }
 
     private void addFormEnums(Model model) {
         model.addAttribute("eventTypes", EventType.values());
         model.addAttribute("sourceTypes", SourceType.values());
         model.addAttribute("eventStatuses", EventStatus.values());
+        model.addAttribute("allTags", tagRepository.findAllByOrderByCategoryAscNameAsc());
     }
 
     // ── Event Detail ──────────────────────────────────────────────────────────
@@ -71,11 +75,9 @@ public class EventController {
             User currentUser = principal.getUser();
             model.addAttribute("currentUser", currentUser);
 
-            // Current user's RSVP status
             rsvpService.getUserRsvpStatus(currentUser, event)
                     .ifPresent(s -> model.addAttribute("userRsvpStatus", s));
 
-            // Which comments the current user has liked
             Map<Long, Boolean> likedComments = new HashMap<>();
             for (Comment c : comments) {
                 likedComments.put(c.getId(),

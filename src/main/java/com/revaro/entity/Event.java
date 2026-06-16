@@ -10,7 +10,9 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "events")
@@ -84,13 +86,10 @@ public class Event {
 
     // ── Relationships ─────────────────────────────────────────────────────────
 
-    // EAGER — always needed for username display
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "creator_id", nullable = false)
     private User creator;
 
-    // Use @OrderBy to allow EAGER on multiple collections safely
-    // Convert to List with @OrderColumn avoids the "multiple bags" problem
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt ASC")
     private List<Rsvp> rsvps = new ArrayList<>();
@@ -103,11 +102,19 @@ public class Event {
     @OrderBy("createdAt DESC")
     private List<ClaimRequest> claimRequests = new ArrayList<>();
 
-    // Transient — set by service layer, not loaded from DB
+    // Tags — many-to-many, predefined list
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "event_tags",
+        joinColumns = @JoinColumn(name = "event_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private Set<Tag> tags = new HashSet<>();
+
+    // Transient — set by service layer
     @Transient
     private Comment topComment;
 
-    // Transient counts — set by service to avoid lazy loading issues
     @Transient
     private long goingCountCache = -1;
 
@@ -140,9 +147,7 @@ public class Event {
             return rsvps.stream()
                     .filter(r -> com.revaro.enums.RsvpStatus.GOING.equals(r.getStatus()))
                     .count();
-        } catch (Exception e) {
-            return 0;
-        }
+        } catch (Exception e) { return 0; }
     }
 
     public long getInterestedCount() {
@@ -152,18 +157,11 @@ public class Event {
             return rsvps.stream()
                     .filter(r -> com.revaro.enums.RsvpStatus.INTERESTED.equals(r.getStatus()))
                     .count();
-        } catch (Exception e) {
-            return 0;
-        }
+        } catch (Exception e) { return 0; }
     }
 
     public void setGoingCountCache(long count) { this.goingCountCache = count; }
     public void setInterestedCountCache(long count) { this.interestedCountCache = count; }
-
-    public Double getLatitude() { return latitude; }
-    public void setLatitude(Double latitude) { this.latitude = latitude; }
-    public Double getLongitude() { return longitude; }
-    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
     public boolean isUpcoming() {
         return eventDateTime != null && eventDateTime.isAfter(LocalDateTime.now());
@@ -218,6 +216,12 @@ public class Event {
     public String getFeaturedImage() { return featuredImage; }
     public void setFeaturedImage(String featuredImage) { this.featuredImage = featuredImage; }
 
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
     public EventStatus getStatus() { return status; }
     public void setStatus(EventStatus status) { this.status = status; }
 
@@ -238,6 +242,9 @@ public class Event {
 
     public List<ClaimRequest> getClaimRequests() { return claimRequests; }
     public void setClaimRequests(List<ClaimRequest> claimRequests) { this.claimRequests = claimRequests; }
+
+    public Set<Tag> getTags() { return tags; }
+    public void setTags(Set<Tag> tags) { this.tags = tags; }
 
     public Comment getTopComment() { return topComment; }
     public void setTopComment(Comment topComment) { this.topComment = topComment; }
