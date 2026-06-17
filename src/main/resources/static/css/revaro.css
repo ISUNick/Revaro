@@ -768,6 +768,10 @@ a:hover { color: #5490ff; text-decoration: none; }
     }
     .event-card-body {
         padding: 1rem;
+        overflow: visible;
+    }
+    .event-distance-label {
+        display: inline !important;
     }
 
     /* Homepage search bar — stack vertically */
