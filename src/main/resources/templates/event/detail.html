@@ -36,7 +36,7 @@
     <div class="row g-4">
 
         <!-- LEFT: Main content -->
-        <div class="col-12 col-lg-8 order-2 order-lg-1">
+        <div class="col-12 col-lg-8">
 
             <!-- Image — 16:9 fixed ratio, matches cards -->
             <div th:if="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
@@ -177,134 +177,11 @@
             </div>
 
             <!-- ── COMMENTS ── -->
-            <div class="comment-section" id="comments">
-                <h2 class="section-label">Comments
-                    <span th:if="${comments != null}"
-                          style="font-weight:400; color:var(--color-text-muted);"
-                          th:text="'(' + ${comments.size()} + ')'"></span>
-                </h2>
-
-                <!-- Add comment form -->
-                <div sec:authorize="isAuthenticated()" class="mb-4">
-                    <form th:action="@{/events/{id}/comments(id=${event.id})}" method="post">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                        <div class="mb-2">
-                            <textarea name="content" class="form-control" rows="3"
-                                      placeholder="Share your thoughts about this event..."
-                                      maxlength="2000" required
-                                      style="resize:vertical;"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary-revaro btn-sm">
-                            <i class="bi bi-chat-dots me-1"></i>Post Comment
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Sign in prompt -->
-                <div sec:authorize="isAnonymous()" class="revaro-card p-3 mb-4 text-center"
-                     style="color:var(--color-text-muted); font-size:0.9rem;">
-                    <a th:href="@{/login}" style="color:var(--color-primary-light);">Sign in</a>
-                    to join the conversation.
-                </div>
-
-                <!-- Comment list -->
-                <div th:if="${comments != null and !comments.empty}">
-                    <div th:each="comment : ${comments}"
-                         th:id="'comment-' + ${comment.id}"
-                         class="comment-card">
-
-                        <!-- Header -->
-                        <div class="d-flex align-items-center justify-content-between mb-1">
-                            <div class="d-flex align-items-center gap-2">
-                                <!-- Avatar -->
-                                <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0; overflow:hidden;
-                                            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
-                                            display:flex; align-items:center; justify-content:center;
-                                            font-size:0.75rem; font-weight:700; color:#fff;">
-                                    <img th:if="${comment.user != null and comment.user.profileImage != null and !#strings.isEmpty(comment.user.profileImage)}"
-                                         th:src=${comment.user.profileImage}
-                                         style="width:100%; height:100%; object-fit:cover;"
-                                         th:alt="${comment.user.username}"/>
-                                    <span th:unless="${comment.user != null and comment.user.profileImage != null and !#strings.isEmpty(comment.user.profileImage)}"
-                                          th:text="${comment.user != null ? comment.user.username.substring(0,1).toUpperCase() : '?'}">U</span>
-                                </div>
-                                <a th:href="@{/profile/{u}(u=${comment.user.username})}"
-                                   th:if="${comment.user != null}"
-                                   class="comment-author"
-                                   th:text="${comment.user.username}">Username</a>
-                                <span th:unless="${comment.user != null}" class="comment-author">Unknown</span>
-                                <span class="comment-timestamp"
-                                      th:text="${#temporals.format(comment.createdAt, 'MMM d, yyyy h:mm a')}">Jan 1</span>
-                            </div>
-
-                            <!-- Like + Delete -->
-                            <div class="d-flex align-items-center gap-2">
-                                <!-- Like button -->
-                                <form sec:authorize="isAuthenticated()"
-                                      th:action="@{/events/{eid}/comments/{cid}/like(eid=${event.id},cid=${comment.id})}"
-                                      method="post" style="margin:0;">
-                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                    <button type="submit" class="comment-like-btn"
-                                            th:classappend="${likedComments != null and likedComments[comment.id]} ? 'liked'">
-                                        <i class="bi bi-heart-fill" th:if="${likedComments != null and likedComments[comment.id]}"></i>
-                                        <i class="bi bi-heart" th:unless="${likedComments != null and likedComments[comment.id]}"></i>
-                                        <span th:text="${comment.likeCount}">0</span>
-                                    </button>
-                                </form>
-                                <span sec:authorize="isAnonymous()"
-                                      style="font-size:0.8rem; color:var(--color-text-muted);">
-                                    <i class="bi bi-heart"></i>
-                                    <span th:text="${comment.likeCount}">0</span>
-                                </span>
-
-                                <!-- Delete (owner or admin) -->
-                                <form th:if="${currentUser != null and (currentUser.id == comment.user.id or currentUser.admin)}"
-                                      th:action="@{/events/{eid}/comments/{cid}/delete(eid=${event.id},cid=${comment.id})}"
-                                      method="post" style="margin:0;">
-                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                    <button type="submit" class="comment-like-btn"
-                                            style="color:var(--color-accent);"
-                                            onclick="return confirm('Delete this comment?')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-
-                                <!-- Report (other logged-in users) -->
-                                <form th:if="${currentUser != null and currentUser.id != comment.user.id and !currentUser.admin}"
-                                      th:action="@{/report/comment/{id}(id=${comment.id})}"
-                                      method="post" style="margin:0;">
-                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                    <input type="hidden" name="returnUrl" th:value="@{/events/{id}(id=${event.id})}"/>
-                                    <button type="submit" class="comment-like-btn"
-                                            style="color:rgba(239,68,68,0.6);background:rgba(239,68,68,0.06);
-                                                   border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-sm);
-                                                   padding:0.3rem 0.5rem;"
-                                            onclick="return confirm('Report this comment for inappropriate content?')">
-                                        <i class="bi bi-flag"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- Body -->
-                        <p class="comment-body mb-0" th:text="${comment.content}">Comment text</p>
-                    </div>
-                </div>
-
-                <!-- No comments yet -->
-                <div th:if="${comments == null or comments.empty}"
-                     class="revaro-card p-4 text-center"
-                     style="color:var(--color-text-muted); font-size:0.9rem;">
-                    <i class="bi bi-chat-dots"
-                       style="font-size:1.5rem; opacity:0.3; display:block; margin-bottom:0.5rem;"></i>
-                    No comments yet. Be the first to say something!
-                </div>
-            </div>
 
         </div>
 
         <!-- RIGHT: Info panel -->
-        <div class="col-12 col-lg-4 order-1 order-lg-2">
+        <div class="col-12 col-lg-4">
 
             <!-- Event info -->
             <div class="event-info-panel mb-3">
@@ -432,6 +309,136 @@
 
         </div>
     </div>
+
+<div class="container-xl mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="comment-section" id="comments">
+                <h2 class="section-label">Comments
+                    <span th:if="${comments != null}"
+                          style="font-weight:400; color:var(--color-text-muted);"
+                          th:text="'(' + ${comments.size()} + ')'"></span>
+                </h2>
+
+                <!-- Add comment form -->
+                <div sec:authorize="isAuthenticated()" class="mb-4">
+                    <form th:action="@{/events/{id}/comments(id=${event.id})}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <div class="mb-2">
+                            <textarea name="content" class="form-control" rows="3"
+                                      placeholder="Share your thoughts about this event..."
+                                      maxlength="2000" required
+                                      style="resize:vertical;"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary-revaro btn-sm">
+                            <i class="bi bi-chat-dots me-1"></i>Post Comment
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Sign in prompt -->
+                <div sec:authorize="isAnonymous()" class="revaro-card p-3 mb-4 text-center"
+                     style="color:var(--color-text-muted); font-size:0.9rem;">
+                    <a th:href="@{/login}" style="color:var(--color-primary-light);">Sign in</a>
+                    to join the conversation.
+                </div>
+
+                <!-- Comment list -->
+                <div th:if="${comments != null and !comments.empty}">
+                    <div th:each="comment : ${comments}"
+                         th:id="'comment-' + ${comment.id}"
+                         class="comment-card">
+
+                        <!-- Header -->
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- Avatar -->
+                                <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0; overflow:hidden;
+                                            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+                                            display:flex; align-items:center; justify-content:center;
+                                            font-size:0.75rem; font-weight:700; color:#fff;">
+                                    <img th:if="${comment.user != null and comment.user.profileImage != null and !#strings.isEmpty(comment.user.profileImage)}"
+                                         th:src=${comment.user.profileImage}
+                                         style="width:100%; height:100%; object-fit:cover;"
+                                         th:alt="${comment.user.username}"/>
+                                    <span th:unless="${comment.user != null and comment.user.profileImage != null and !#strings.isEmpty(comment.user.profileImage)}"
+                                          th:text="${comment.user != null ? comment.user.username.substring(0,1).toUpperCase() : '?'}">U</span>
+                                </div>
+                                <a th:href="@{/profile/{u}(u=${comment.user.username})}"
+                                   th:if="${comment.user != null}"
+                                   class="comment-author"
+                                   th:text="${comment.user.username}">Username</a>
+                                <span th:unless="${comment.user != null}" class="comment-author">Unknown</span>
+                                <span class="comment-timestamp"
+                                      th:text="${#temporals.format(comment.createdAt, 'MMM d, yyyy h:mm a')}">Jan 1</span>
+                            </div>
+
+                            <!-- Like + Delete -->
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- Like button -->
+                                <form sec:authorize="isAuthenticated()"
+                                      th:action="@{/events/{eid}/comments/{cid}/like(eid=${event.id},cid=${comment.id})}"
+                                      method="post" style="margin:0;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="comment-like-btn"
+                                            th:classappend="${likedComments != null and likedComments[comment.id]} ? 'liked'">
+                                        <i class="bi bi-heart-fill" th:if="${likedComments != null and likedComments[comment.id]}"></i>
+                                        <i class="bi bi-heart" th:unless="${likedComments != null and likedComments[comment.id]}"></i>
+                                        <span th:text="${comment.likeCount}">0</span>
+                                    </button>
+                                </form>
+                                <span sec:authorize="isAnonymous()"
+                                      style="font-size:0.8rem; color:var(--color-text-muted);">
+                                    <i class="bi bi-heart"></i>
+                                    <span th:text="${comment.likeCount}">0</span>
+                                </span>
+
+                                <!-- Delete (owner or admin) -->
+                                <form th:if="${currentUser != null and (currentUser.id == comment.user.id or currentUser.admin)}"
+                                      th:action="@{/events/{eid}/comments/{cid}/delete(eid=${event.id},cid=${comment.id})}"
+                                      method="post" style="margin:0;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="comment-like-btn"
+                                            style="color:var(--color-accent);"
+                                            onclick="return confirm('Delete this comment?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Report (other logged-in users) -->
+                                <form th:if="${currentUser != null and currentUser.id != comment.user.id and !currentUser.admin}"
+                                      th:action="@{/report/comment/{id}(id=${comment.id})}"
+                                      method="post" style="margin:0;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <input type="hidden" name="returnUrl" th:value="@{/events/{id}(id=${event.id})}"/>
+                                    <button type="submit" class="comment-like-btn"
+                                            style="color:rgba(239,68,68,0.6);background:rgba(239,68,68,0.06);
+                                                   border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-sm);
+                                                   padding:0.3rem 0.5rem;"
+                                            onclick="return confirm('Report this comment for inappropriate content?')">
+                                        <i class="bi bi-flag"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Body -->
+                        <p class="comment-body mb-0" th:text="${comment.content}">Comment text</p>
+                    </div>
+                </div>
+
+                <!-- No comments yet -->
+                <div th:if="${comments == null or comments.empty}"
+                     class="revaro-card p-4 text-center"
+                     style="color:var(--color-text-muted); font-size:0.9rem;">
+                    <i class="bi bi-chat-dots"
+                       style="font-size:1.5rem; opacity:0.3; display:block; margin-bottom:0.5rem;"></i>
+                    No comments yet. Be the first to say something!
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 
 <!-- Delete modal -->
