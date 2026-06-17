@@ -151,6 +151,32 @@
             </div>
         </div>
 
+        <!-- ── SECTION: Tags ── -->
+        <div class="revaro-card p-4 mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h2 class="section-label mb-0">Tags</h2>
+                <button type="button"
+                        class="btn btn-outline-revaro btn-sm d-flex align-items-center gap-2"
+                        data-bs-toggle="modal" data-bs-target="#tagPickerModal">
+                    <i class="bi bi-tags"></i> Add Tags
+                </button>
+            </div>
+            <!-- Preview of selected tags -->
+            <div id="selectedTagsDisplay" style="display:flex;flex-wrap:wrap;gap:0.4rem;min-height:28px;">
+                <span id="noTagsMsg"
+                      th:if="${eventDto.tagIds == null or eventDto.tagIds.empty}"
+                      style="font-size:0.8rem;color:var(--color-text-muted);">
+                    No tags selected — click "Add Tags" to choose some.
+                </span>
+            </div>
+            <!-- Hidden inputs for selected tag IDs -->
+            <div id="tagIdInputs">
+                <input th:each="tagId : ${eventDto.tagIds}"
+                       type="hidden" name="tagIds"
+                       th:value="${tagId}"/>
+            </div>
+        </div>
+
         <!-- ── SECTION: Location ── -->
         <div class="revaro-card p-4 mb-4">
             <h2 class="section-label">Location</h2>
@@ -324,6 +350,51 @@
     </div>
 </div>
 
+<!-- ── TAG PICKER MODAL ── -->
+<div class="modal fade" id="tagPickerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content"
+             style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);">
+            <div class="modal-header" style="border-color:var(--color-border-subtle);padding:1.25rem 1.5rem;">
+                <h5 class="modal-title" style="font-weight:700;">Add Tags</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;max-height:65vh;overflow-y:auto;">
+                <p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1.25rem;">
+                    Select tags that describe your event. Choose as many as apply.
+                </p>
+                <div th:each="category : ${T(com.revaro.enums.TagCategory).values()}" class="mb-4">
+                    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;
+                                letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:0.6rem;"
+                         th:text="${category.displayName}">Category</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+                        <label th:each="tag : ${allTags}"
+                               th:if="${tag.category == category}"
+                               class="tag-modal-label"
+                               th:data-tag-id="${tag.id}"
+                               th:data-tag-name="${tag.name}"
+                               th:data-tag-bg="${tag.category.bgColor}"
+                               th:data-tag-color="${tag.category.textColor}">
+                            <input type="checkbox"
+                                   th:value="${tag.id}"
+                                   th:checked="${eventDto.tagIds != null and eventDto.tagIds.contains(tag.id)}"
+                                   class="tag-modal-checkbox"
+                                   style="display:none;"/>
+                            <span class="tag-modal-chip"
+                                  th:text="${tag.name}"
+                                  th:style="'background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';'">Tag</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-color:var(--color-border-subtle);padding:1rem 1.5rem;justify-content:space-between;">
+                <span id="selectedTagCount" style="font-size:0.8rem;color:var(--color-text-muted);">0 tags selected</span>
+                <button type="button" class="btn btn-primary-revaro" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:replace="~{fragments/layout :: scripts}"></div>
 
@@ -434,6 +505,100 @@ var freqEl = document.querySelector('[name="recurringFrequency"]');
 var endEl = document.querySelector('[name="recurringEndDate"]');
 if (freqEl) freqEl.addEventListener('change', updateRecurringCount);
 if (endEl) endEl.addEventListener('change', updateRecurringCount);
+
+
+// ── Tag Picker ─────────────────────────────────────────────────────────────
+(function() {
+    var selectedTags = new Map();
+
+    // Pre-populate from existing hidden inputs (edit mode)
+    document.querySelectorAll('#tagIdInputs input[name="tagIds"]').forEach(function(input) {
+        var label = document.querySelector('.tag-modal-label[data-tag-id="' + input.value + '"]');
+        if (label) {
+            selectedTags.set(input.value, {
+                name: label.dataset.tagName,
+                bg:   label.dataset.tagBg,
+                color:label.dataset.tagColor
+            });
+        }
+    });
+
+    // Render preview on page load (for edit mode)
+    renderPreview();
+
+    // Sync checkboxes when modal opens
+    document.getElementById('tagPickerModal') && document.getElementById('tagPickerModal').addEventListener('show.bs.modal', function() {
+        document.querySelectorAll('.tag-modal-checkbox').forEach(function(cb) {
+            var label = cb.closest('.tag-modal-label');
+            cb.checked = selectedTags.has(label.dataset.tagId);
+            updateChipStyle(cb);
+        });
+        updateCount();
+    });
+
+    // Handle checkbox changes
+    document.querySelectorAll('.tag-modal-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var label = this.closest('.tag-modal-label');
+            var id = label.dataset.tagId;
+            if (this.checked) {
+                selectedTags.set(id, { name: label.dataset.tagName, bg: label.dataset.tagBg, color: label.dataset.tagColor });
+            } else {
+                selectedTags.delete(id);
+            }
+            updateChipStyle(this);
+            updateCount();
+        });
+    });
+
+    function updateChipStyle(cb) {
+        var chip = cb.nextElementSibling;
+        if (!chip) return;
+        chip.style.outline = cb.checked ? '2px solid white' : '';
+        chip.style.outlineOffset = cb.checked ? '1px' : '';
+        chip.style.transform = cb.checked ? 'translateY(-1px)' : '';
+    }
+
+    function updateCount() {
+        var el = document.getElementById('selectedTagCount');
+        if (el) el.textContent = selectedTags.size + ' tag' + (selectedTags.size !== 1 ? 's' : '') + ' selected';
+    }
+
+    // On modal close — sync hidden inputs and preview
+    document.getElementById('tagPickerModal') && document.getElementById('tagPickerModal').addEventListener('hidden.bs.modal', function() {
+        var container = document.getElementById('tagIdInputs');
+        container.innerHTML = '';
+        selectedTags.forEach(function(info, id) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'tagIds';
+            input.value = id;
+            container.appendChild(input);
+        });
+        renderPreview();
+    });
+
+    function renderPreview() {
+        var display = document.getElementById('selectedTagsDisplay');
+        if (!display) return;
+        display.innerHTML = '';
+        if (selectedTags.size === 0) {
+            display.innerHTML = '<span style="font-size:0.8rem;color:var(--color-text-muted);">No tags selected — click "Add Tags" to choose some.</span>';
+        } else {
+            selectedTags.forEach(function(info) {
+                var span = document.createElement('span');
+                span.textContent = info.name;
+                span.style.cssText = 'font-size:0.75rem;font-weight:600;padding:0.25rem 0.65rem;border-radius:20px;background:' + info.bg + ';color:' + info.color + ';';
+                display.appendChild(span);
+            });
+        }
+    }
+
+    // Chip styles
+    var style = document.createElement('style');
+    style.textContent = '.tag-modal-label{cursor:pointer;margin:0;}.tag-modal-chip{display:inline-flex;align-items:center;padding:0.3rem 0.75rem;border-radius:20px;font-size:0.78rem;font-weight:600;cursor:pointer;user-select:none;transition:transform 0.1s,outline 0.1s;}.tag-modal-chip:hover{filter:brightness(1.12);}';
+    document.head.appendChild(style);
+})();
 
 </script>
 </body>
