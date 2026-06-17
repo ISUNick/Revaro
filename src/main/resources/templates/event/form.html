@@ -457,6 +457,8 @@ if (imageInput) {
             var mm = Math.round(parseInt(timeParts[1]) / 15) * 15;
             if (mm === 60) { mm = 0; hh = String(parseInt(hh) + 1).padStart(2,'0'); }
             timePicker.value = hh + ':' + String(mm).padStart(2,'0');
+            // Normalize hidden field to exact format Spring expects
+            hidden.value = datePicker.value + 'T' + timePicker.value;
         }
     }
 
