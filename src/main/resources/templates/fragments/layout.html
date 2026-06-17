@@ -79,6 +79,13 @@
                     <a th:href="@{/claims/my-claims}" class="mobile-nav-item">
                         <i class="bi bi-patch-check me-2"></i>My Claims
                     </a>
+                    <a th:href="@{/notifications}" class="mobile-nav-item">
+                        <i class="bi bi-bell me-2"></i>Notifications
+                        <span th:if="${unreadNotificationCount > 0}"
+                              style="background:#ef4444;color:#fff;border-radius:20px;font-size:0.65rem;
+                                     padding:0.1rem 0.4rem;font-weight:700;margin-left:0.3rem;"
+                              th:text="${unreadNotificationCount}">0</span>
+                    </a>
                     <a th:href="@{/events/create}" class="mobile-nav-item">
                         <i class="bi bi-plus-lg me-2"></i>Post Event
                     </a>
@@ -120,7 +127,13 @@
                     <div class="dropdown">
                         <button class="btn btn-nav-login dropdown-toggle d-flex align-items-center gap-2 p-1 pe-2"
                                 type="button" data-bs-toggle="dropdown" aria-expanded="false"
-                                style="border-radius: 30px;">
+                                style="border-radius:30px;position:relative;">
+                            <span th:if="${unreadNotificationCount > 0}"
+                                  style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;
+                                         border-radius:50%;width:18px;height:18px;font-size:0.6rem;font-weight:700;
+                                         display:flex;align-items:center;justify-content:center;
+                                         border:2px solid var(--color-surface);pointer-events:none;"
+                                  th:text="${unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}">0</span>
                             <div class="nav-avatar"
                                  th:if="${currentNavUser != null and currentNavUser.profileImage != null and !#strings.isEmpty(currentNavUser.profileImage)}">
                                 <img th:src="${currentNavUser.profileImage}"
@@ -136,6 +149,17 @@
                             <li><a class="dropdown-item" th:href="@{/profile}" style="color:var(--color-text-muted);font-size:0.875rem;"><i class="bi bi-person me-2"></i>My Profile</a></li>
                             <li><a class="dropdown-item" th:href="@{/my-events}" style="color:var(--color-text-muted);font-size:0.875rem;"><i class="bi bi-calendar3 me-2"></i>My Events</a></li>
                             <li><a class="dropdown-item" th:href="@{/claims/my-claims}" style="color:var(--color-text-muted);font-size:0.875rem;"><i class="bi bi-patch-check me-2"></i>My Claims</a></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center justify-content-between"
+                                   th:href="@{/notifications}"
+                                   style="color:var(--color-text-muted);font-size:0.875rem;">
+                                    <span><i class="bi bi-bell me-2"></i>Notifications</span>
+                                    <span th:if="${unreadNotificationCount > 0}"
+                                          style="background:#ef4444;color:#fff;border-radius:20px;
+                                                 font-size:0.65rem;padding:0.1rem 0.45rem;font-weight:700;"
+                                          th:text="${unreadNotificationCount}">0</span>
+                                </a>
+                            </li>
                             <li sec:authorize="hasRole('ADMIN')"><a class="dropdown-item" th:href="@{/admin}" style="color:var(--color-primary-light);font-size:0.875rem;"><i class="bi bi-shield-check me-2"></i>Admin</a></li>
                             <li><hr class="dropdown-divider" style="border-color:var(--color-border);"/></li>
                             <li>
@@ -208,3 +232,4 @@
 
 </body>
 </html>
+

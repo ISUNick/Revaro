@@ -54,11 +54,19 @@
                       th:style="'font-size:0.7rem;font-weight:600;padding:0.2rem 0.55rem;border-radius:20px;white-space:nowrap;background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';'">Tag</span>
             </div>
 
-            <!-- Back link + report -->
+            <!-- Back link + share + report -->
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <a th:href="@{/}" style="font-size:0.8rem; color:var(--color-text-muted); display:inline-flex; align-items:center; gap:0.3rem;">
                     <i class="bi bi-arrow-left"></i> Back to events
                 </a>
+                <div class="d-flex gap-2">
+                    <!-- Share button -->
+                    <button onclick="shareEvent()" class="btn btn-sm"
+                            style="font-size:0.72rem;color:var(--color-text-muted);background:none;
+                                   border:1px solid var(--color-border-subtle);border-radius:var(--radius-sm);
+                                   padding:0.35rem 0.75rem;">
+                        <i class="bi bi-share me-1"></i>Share
+                    </button>
                 <form th:if="${currentUser != null and currentUser.id != event.creator.id}"
                       th:action="@{/report/event/{id}(id=${event.id})}" method="post" style="margin:0;">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -70,6 +78,7 @@
                         <i class="bi bi-flag me-1"></i>Report
                     </button>
                 </form>
+                </div><!-- end share+report group -->
             </div>
 
             <!-- Status banner — cancelled or postponed -->
@@ -450,5 +459,29 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+function shareEvent() {
+    var title = document.title;
+    var url = window.location.href;
+    // Try native share (works great on mobile)
+    if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(function() {});
+        return;
+    }
+    // Desktop fallback — copy link
+    navigator.clipboard.writeText(url).then(function() {
+        var btn = document.querySelector('[onclick="shareEvent()"]');
+        if (btn) {
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check me-1"></i>Copied!';
+            setTimeout(function() { btn.innerHTML = orig; }, 2000);
+        }
+    }).catch(function() {
+        // Last resort — show the URL
+        prompt('Copy this link:', url);
+    });
+}
+</script>
 </body>
 </html>

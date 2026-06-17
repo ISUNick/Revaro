@@ -4,14 +4,12 @@ import com.revaro.entity.Event;
 import com.revaro.enums.RsvpStatus;
 import com.revaro.security.UserDetailsImpl;
 import com.revaro.service.EventService;
+import com.revaro.service.NotificationService;
 import com.revaro.service.RsvpService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -20,10 +18,14 @@ public class RsvpController {
 
     private final RsvpService rsvpService;
     private final EventService eventService;
+    private final NotificationService notificationService;
 
-    public RsvpController(RsvpService rsvpService, EventService eventService) {
+    public RsvpController(RsvpService rsvpService,
+                          EventService eventService,
+                          NotificationService notificationService) {
         this.rsvpService = rsvpService;
         this.eventService = eventService;
+        this.notificationService = notificationService;
     }
 
     @PostMapping
@@ -46,6 +48,12 @@ public class RsvpController {
                 String label = result == RsvpStatus.GOING ? "Going" : "Interested";
                 redirectAttributes.addFlashAttribute("successMessage",
                         "You are marked as " + label + "!");
+                // Fire notification
+                if (result == RsvpStatus.GOING) {
+                    notificationService.notifyRsvpGoing(principal.getUser(), event);
+                } else {
+                    notificationService.notifyRsvpInterested(principal.getUser(), event);
+                }
             }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Invalid RSVP status.");

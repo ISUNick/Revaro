@@ -5,6 +5,7 @@ import com.revaro.entity.Event;
 import com.revaro.security.UserDetailsImpl;
 import com.revaro.service.CommentService;
 import com.revaro.service.EventService;
+import com.revaro.service.NotificationService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -17,13 +18,15 @@ public class CommentController {
 
     private final CommentService commentService;
     private final EventService eventService;
+    private final NotificationService notificationService;
 
-    public CommentController(CommentService commentService, EventService eventService) {
+    public CommentController(CommentService commentService,
+                             EventService eventService,
+                             NotificationService notificationService) {
         this.commentService = commentService;
         this.eventService = eventService;
+        this.notificationService = notificationService;
     }
-
-    // ── Post comment ──────────────────────────────────────────────────────────
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -37,14 +40,13 @@ public class CommentController {
 
         try {
             commentService.addComment(principal.getUser(), event, content);
+            notificationService.notifyComment(principal.getUser(), event);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
 
         return "redirect:/events/" + eventId + "#comments";
     }
-
-    // ── Delete comment ────────────────────────────────────────────────────────
 
     @PostMapping("/{commentId}/delete")
     @PreAuthorize("isAuthenticated()")
@@ -60,8 +62,6 @@ public class CommentController {
         return "redirect:/events/" + eventId + "#comments";
     }
 
-    // ── Like comment ──────────────────────────────────────────────────────────
-
     @PostMapping("/{commentId}/like")
     @PreAuthorize("isAuthenticated()")
     public String likeComment(@PathVariable Long eventId,
@@ -72,7 +72,11 @@ public class CommentController {
         Comment comment = commentService.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("Comment not found."));
 
-        commentService.toggleLike(principal.getUser(), comment);
+        boolean liked = commentService.toggleLike(principal.getUser(), comment);
+        if (liked) {
+            notificationService.notifyCommentLiked(principal.getUser(), comment);
+        }
+
         return "redirect:/events/" + eventId + "#comment-" + commentId;
     }
 }
