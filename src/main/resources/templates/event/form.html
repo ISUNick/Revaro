@@ -75,12 +75,25 @@
 
             <!-- Date & Time -->
             <div class="mb-3">
-                <label for="eventDateTime" class="form-label">Date & Time <span style="color:var(--color-accent)">*</span></label>
-                <input type="datetime-local" id="eventDateTime"
-                       th:field="*{eventDateTime}"
-                       class="form-control"
+                <label class="form-label">Date & Time <span style="color:var(--color-accent)">*</span></label>
+                <!-- Hidden field that holds the combined datetime value -->
+                <input type="hidden" id="eventDateTime" th:field="*{eventDateTime}"
                        th:classappend="${#fields.hasErrors('eventDateTime')} ? 'is-invalid'"/>
-                <div class="invalid-feedback" th:if="${#fields.hasErrors('eventDateTime')}" th:errors="*{eventDateTime}"></div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <div style="flex:1;min-width:160px;">
+                        <input type="date" id="datePicker" class="form-control"
+                               th:value="${eventDto.eventDateTime != null ? #temporals.format(eventDto.eventDateTime, 'yyyy-MM-dd') : ''}"/>
+                    </div>
+                    <div style="flex:1;min-width:140px;">
+                        <select id="timePicker" class="form-select">
+                            <option value="">Select time...</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.3rem;">
+                    Times are in 15-minute intervals
+                </div>
+                <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('eventDateTime')}" th:errors="*{eventDateTime}"></div>
             </div>
 
             <!-- Recurring -->
@@ -342,6 +355,49 @@ if (imageInput) {
         }
     });
 }
+
+// ── Date + Time picker → hidden datetime field ─────────────────────────────
+(function() {
+    var datePicker = document.getElementById('datePicker');
+    var timePicker = document.getElementById('timePicker');
+    var hidden = document.getElementById('eventDateTime');
+    if (!datePicker || !timePicker || !hidden) return;
+
+    // Populate 15-minute interval time options
+    for (var h = 0; h < 24; h++) {
+        for (var m = 0; m < 60; m += 15) {
+            var val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+            var hour = h % 12 === 0 ? 12 : h % 12;
+            var ampm = h < 12 ? 'AM' : 'PM';
+            var label = hour + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+            var opt = new Option(label, val);
+            timePicker.appendChild(opt);
+        }
+    }
+
+    // Pre-select existing value on edit
+    if (hidden.value) {
+        var parts = hidden.value.split('T');
+        if (parts.length === 2) {
+            datePicker.value = parts[0];
+            var timeParts = parts[1].substring(0,5).split(':');
+            var hh = timeParts[0];
+            var mm = Math.round(parseInt(timeParts[1]) / 15) * 15;
+            if (mm === 60) { mm = 0; hh = String(parseInt(hh) + 1).padStart(2,'0'); }
+            timePicker.value = hh + ':' + String(mm).padStart(2,'0');
+        }
+    }
+
+    function updateHidden() {
+        if (datePicker.value && timePicker.value) {
+            hidden.value = datePicker.value + 'T' + timePicker.value;
+        }
+        updateRecurringCount();
+    }
+
+    datePicker.addEventListener('change', updateHidden);
+    timePicker.addEventListener('change', updateHidden);
+})();
 
 // ── Recurring toggle ───────────────────────────────────────────────────────
 window.toggleRecurring = function(checked) {

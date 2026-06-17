@@ -54,7 +54,7 @@
                         style="white-space:nowrap;">
                     <i class="bi bi-sliders"></i>
                     Filters
-                    <span th:if="${(param.type != null and param.type[0] != '') or (param.state != null and param.state[0] != '') or param.tag != null}"
+                    <span th:if="${(param.type != null and !param.type.empty and param.type[0] != '') or (param.state != null and !param.state.empty and param.state[0] != '') or (param.tag != null and !param.tag.empty)}"
                           style="background:var(--color-primary);color:#fff;border-radius:20px;font-size:0.65rem;padding:0.1rem 0.45rem;font-weight:700;">
                         &#x2713;
                     </span>
@@ -115,7 +115,7 @@
 
             <!-- Expandable filter panel -->
             <div id="filterPanel"
-                 th:style="${(param.type != null and param.type[0] != '') or (param.state != null and param.state[0] != '') or param.tag != null} ? 'display:block;' : 'display:none;'"
+                 th:style="${(param.type != null and !param.type.empty and param.type[0] != '') or (param.state != null and !param.state.empty and param.state[0] != '') or (param.tag != null and !param.tag.empty)} ? 'display:block;' : 'display:none;'"
                  style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--color-border-subtle);">
 
                 <div class="d-flex gap-3 flex-wrap align-items-start">

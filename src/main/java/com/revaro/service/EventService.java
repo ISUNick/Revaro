@@ -159,6 +159,44 @@ public class EventService {
         return dates;
     }
 
+    /**
+     * Create recurring future events based on an edited event.
+     * Skips the first date (the event being edited) and creates all subsequent ones.
+     */
+    public void createRecurringFromEdit(Long originalEventId, EventDto dto, User creator) throws IOException {
+        Event original = eventRepository.findById(originalEventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found."));
+
+        List<LocalDateTime> dates = buildRecurringDates(dto);
+        if (dates.size() <= 1) return; // No additional dates
+
+        Set<Tag> tags = original.getTags() != null ? original.getTags() : new java.util.HashSet<>();
+        String imageUrl = original.getFeaturedImage();
+        double[] coords = original.getLatitude() != null
+                ? new double[]{original.getLatitude(), original.getLongitude()} : null;
+
+        // Mark the original as a series too
+        original.setRecurring(true);
+        eventRepository.save(original);
+
+        // Create all dates except the first (which is the original event)
+        for (int i = 1; i < dates.size(); i++) {
+            Event event = new Event();
+            applyDtoToEvent(event, dto, tags, coords);
+            event.setEventDateTime(dates.get(i));
+            event.setCreator(creator);
+            event.setStatus(com.revaro.enums.EventStatus.ACTIVE);
+            event.setFeaturedImage(imageUrl);
+            event.setRecurring(true);
+            if (dto.isPostedByOrganizer()) {
+                event.setOrganizerName(creator.getUsername());
+            } else {
+                event.setOrganizerName(dto.getOrganizerName());
+            }
+            eventRepository.save(event);
+        }
+    }
+
     // ── Update ────────────────────────────────────────────────────────────────
 
     public Event updateEvent(Long eventId, EventDto dto, User requestingUser) throws IOException {
