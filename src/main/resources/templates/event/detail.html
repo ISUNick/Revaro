@@ -66,17 +66,26 @@
                 <a th:href="@{/}" style="font-size:0.8rem; color:var(--color-text-muted); display:inline-flex; align-items:center; gap:0.3rem;">
                     <i class="bi bi-arrow-left"></i> Back to events
                 </a>
-                <form th:if="${currentUser != null and currentUser.id != event.creator.id}"
-                      th:action="@{/report/event/{id}(id=${event.id})}" method="post" style="margin:0;">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                    <button type="submit" class="btn btn-sm"
-                            style="font-size:0.72rem;color:rgba(239,68,68,0.6);background:rgba(239,68,68,0.06);
-                                   border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-sm);
-                                   padding:0.35rem 0.75rem;"
-                            onclick="return confirm('Report this event for inappropriate content?')">
-                        <i class="bi bi-flag me-1"></i>Report
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Share button -->
+                    <button onclick="shareEvent()" class="btn btn-sm"
+                            style="font-size:0.72rem;color:var(--color-text-muted);background:none;
+                                   border:1px solid var(--color-border-subtle);border-radius:var(--radius-sm);
+                                   padding:0.35rem 0.75rem;">
+                        <i class="bi bi-share me-1"></i>Share
                     </button>
-                </form>
+                    <form th:if="${currentUser != null and currentUser.id != event.creator.id}"
+                          th:action="@{/report/event/{id}(id=${event.id})}" method="post" style="margin:0;">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <button type="submit" class="btn btn-sm"
+                                style="font-size:0.72rem;color:rgba(239,68,68,0.6);background:rgba(239,68,68,0.06);
+                                       border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-sm);
+                                       padding:0.35rem 0.75rem;"
+                                onclick="return confirm('Report this event for inappropriate content?')">
+                            <i class="bi bi-flag me-1"></i>Report
+                        </button>
+                    </form>
+                </div>
             </div>
 
             <!-- Status banner — cancelled or postponed -->
@@ -472,5 +481,24 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+function shareEvent() {
+    var title = document.title;
+    var url = window.location.href;
+    if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(function() {});
+        return;
+    }
+    navigator.clipboard.writeText(url).then(function() {
+        var btn = document.querySelector('[onclick="shareEvent()"]');
+        if (btn) {
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check me-1"></i>Copied!';
+            setTimeout(function() { btn.innerHTML = orig; }, 2000);
+        }
+    }).catch(function() { prompt('Copy this link:', url); });
+}
+</script>
 </body>
 </html>
