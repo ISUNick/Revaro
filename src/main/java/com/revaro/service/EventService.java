@@ -167,6 +167,11 @@ public class EventService {
         Event original = eventRepository.findById(originalEventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found."));
 
+        // Always use the saved event's datetime as start — don't trust the form binding
+        if (dto.getEventDateTime() == null) {
+            dto.setEventDateTime(original.getEventDateTime());
+        }
+
         List<LocalDateTime> dates = buildRecurringDates(dto);
         if (dates.size() <= 1) return; // No additional dates
 

@@ -187,14 +187,13 @@ public class EventController {
         }
 
         try {
+            eventService.updateEvent(id, dto, principal.getUser());
             if (dto.isRecurring() && dto.getRecurringEndDate() != null) {
-                // Recurring on edit: update this event + create future occurrences
-                eventService.updateEvent(id, dto, principal.getUser());
-                // Create additional dates from this event's date forward
                 eventService.createRecurringFromEdit(id, dto, principal.getUser());
                 redirectAttributes.addFlashAttribute("successMessage", "Event updated and recurring series created!");
+            } else if (dto.isRecurring() && dto.getRecurringEndDate() == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Please set an end date for the recurring series.");
             } else {
-                eventService.updateEvent(id, dto, principal.getUser());
                 redirectAttributes.addFlashAttribute("successMessage", "Event updated successfully!");
             }
             return "redirect:/events/" + id;
