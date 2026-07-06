@@ -24,5 +24,17 @@ public interface RsvpRepository extends JpaRepository<Rsvp, Long> {
     @Query("SELECT COUNT(r) FROM Rsvp r WHERE r.event.creator = :user AND r.status = 'GOING'")
     long countGoingRsvpsForUserEvents(@Param("user") User user);
 
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT COUNT(r) FROM Rsvp r
+        WHERE r.event.creator = :user AND r.status = 'INTERESTED'
+        """)
+    long countInterestedRsvpsForUserEvents(@Param("user") User user);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT COUNT(r) FROM Rsvp r
+        WHERE r.user = :user AND r.status = 'GOING'
+        """)
+    long countGoingRsvpsByUser(@Param("user") User user);
+
     void deleteByUserAndEvent(User user, Event event);
 }

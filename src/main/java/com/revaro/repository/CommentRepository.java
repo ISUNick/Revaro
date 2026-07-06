@@ -19,6 +19,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     long countByEvent(Event event);
 
+    // Count comments made by a specific user (for rev points)
+    @Query("SELECT COUNT(c) FROM Comment c WHERE c.user = :user")
+    long countByUser(@org.springframework.data.repository.query.Param("user") com.revaro.entity.User user);
+
+    // Count comments received on events created by a specific user
+    @Query("SELECT COUNT(c) FROM Comment c WHERE c.event.creator = :user")
+    long countCommentsOnUserEvents(@org.springframework.data.repository.query.Param("user") com.revaro.entity.User user);
+
     org.springframework.data.domain.Page<Comment> findAllByOrderByCreatedAtDesc(
             org.springframework.data.domain.Pageable pageable);
 

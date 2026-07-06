@@ -106,15 +106,28 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public long calculateRevPoints(User user) {
-        // 5 points per event created
-        long eventCount = eventRepository.countByCreator(user);
-        long points = eventCount * 5;
+        long points = 0;
 
-        // 1 point per Going RSVP on their events
-        points += rsvpRepository.countGoingRsvpsForUserEvents(user);
+        // +5 per event posted
+        points += eventRepository.countByCreator(user) * 5;
 
-        // 1 point per like received on their comments
-        points += commentLikeRepository.countLikesReceivedByUser(user);
+        // +2 per Going RSVP received on your events
+        points += rsvpRepository.countGoingRsvpsForUserEvents(user) * 2;
+
+        // +1 per Interested RSVP received on your events
+        points += rsvpRepository.countInterestedRsvpsForUserEvents(user) * 1;
+
+        // +1 per comment received on your events
+        points += commentRepository.countCommentsOnUserEvents(user) * 1;
+
+        // +1 per comment you made
+        points += commentRepository.countByUser(user) * 1;
+
+        // +1 per like received on your comments
+        points += commentLikeRepository.countLikesReceivedByUser(user) * 1;
+
+        // +1 per Going RSVP you made
+        points += rsvpRepository.countGoingRsvpsByUser(user) * 1;
 
         return points;
     }
