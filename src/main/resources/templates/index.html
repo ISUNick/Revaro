@@ -191,9 +191,8 @@
     <div class="row g-3 mb-4">
         <div th:each="user : ${searchUsers}" class="col-12 col-md-4">
             <a th:href="@{/profile/{u}(u=${user.username})}"
-               style="text-decoration:none;"
-               class="revaro-card p-3 d-flex align-items-center gap-3 h-100"
-               style="transition:border-color 0.15s;">
+               style="text-decoration:none;transition:border-color 0.15s;"
+               class="revaro-card p-3 d-flex align-items-center gap-3 h-100">
                 <!-- Avatar -->
                 <div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;overflow:hidden;
                             background:linear-gradient(135deg,var(--color-primary),var(--color-primary-light));
