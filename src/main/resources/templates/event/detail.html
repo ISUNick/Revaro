@@ -610,7 +610,7 @@ document.addEventListener('keydown', function(e) {
 // ── @ mention links with hover preview ────────────────────────────────────
 (function() {
     // Find all comment content divs and linkify @mentions
-    document.querySelectorAll('.comment-content').forEach(function(el) {
+    document.querySelectorAll('.comment-body').forEach(function(el) {
         var text = el.textContent || el.innerText;
         if (!text.includes('@')) return;
         // Replace @username with clickable span
