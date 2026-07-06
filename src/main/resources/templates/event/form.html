@@ -583,6 +583,102 @@ function updateDateInputs() {
     }
 }
 
+
+// ── Tag Picker ─────────────────────────────────────────────────────────────
+(function() {
+    var selectedTags = new Map();
+
+    // Pre-populate from existing hidden inputs (edit mode)
+    document.querySelectorAll('#tagIdInputs input[name="tagIds"]').forEach(function(input) {
+        var label = document.querySelector('.tag-modal-label[data-tag-id="' + input.value + '"]');
+        if (label) {
+            selectedTags.set(input.value, {
+                name: label.dataset.tagName,
+                bg:   label.dataset.tagBg,
+                color:label.dataset.tagColor
+            });
+        }
+    });
+
+    renderPreview();
+
+    // Sync checkboxes when modal opens
+    var modal = document.getElementById('tagPickerModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function() {
+            document.querySelectorAll('.tag-modal-checkbox').forEach(function(cb) {
+                var label = cb.closest('.tag-modal-label');
+                cb.checked = selectedTags.has(label.dataset.tagId);
+                updateChipStyle(cb);
+            });
+            updateCount();
+        });
+
+        // On modal close — sync hidden inputs and preview
+        modal.addEventListener('hidden.bs.modal', function() {
+            var container = document.getElementById('tagIdInputs');
+            container.innerHTML = '';
+            selectedTags.forEach(function(info, id) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'tagIds';
+                input.value = id;
+                container.appendChild(input);
+            });
+            renderPreview();
+        });
+    }
+
+    // Handle checkbox changes
+    document.querySelectorAll('.tag-modal-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var label = this.closest('.tag-modal-label');
+            var id = label.dataset.tagId;
+            if (this.checked) {
+                selectedTags.set(id, { name: label.dataset.tagName, bg: label.dataset.tagBg, color: label.dataset.tagColor });
+            } else {
+                selectedTags.delete(id);
+            }
+            updateChipStyle(this);
+            updateCount();
+        });
+    });
+
+    function updateChipStyle(cb) {
+        var chip = cb.nextElementSibling;
+        if (!chip) return;
+        chip.style.outline = cb.checked ? '2px solid white' : '';
+        chip.style.outlineOffset = cb.checked ? '1px' : '';
+        chip.style.transform = cb.checked ? 'translateY(-1px)' : '';
+    }
+
+    function updateCount() {
+        var el = document.getElementById('selectedTagCount');
+        if (el) el.textContent = selectedTags.size + ' tag' + (selectedTags.size !== 1 ? 's' : '') + ' selected';
+    }
+
+    function renderPreview() {
+        var display = document.getElementById('selectedTagsDisplay');
+        if (!display) return;
+        display.innerHTML = '';
+        if (selectedTags.size === 0) {
+            display.innerHTML = '<span style="font-size:0.8rem;color:var(--color-text-muted);">No tags selected — click "Add Tags" to choose some.</span>';
+        } else {
+            selectedTags.forEach(function(info) {
+                var span = document.createElement('span');
+                span.textContent = info.name;
+                span.style.cssText = 'font-size:0.75rem;font-weight:600;padding:0.25rem 0.65rem;border-radius:20px;background:' + info.bg + ';color:' + info.color + ';';
+                display.appendChild(span);
+            });
+        }
+    }
+
+    // Chip styles
+    var style = document.createElement('style');
+    style.textContent = '.tag-modal-label{cursor:pointer;margin:0;}.tag-modal-chip{display:inline-flex;align-items:center;padding:0.3rem 0.75rem;border-radius:20px;font-size:0.78rem;font-weight:600;cursor:pointer;user-select:none;transition:transform 0.1s,outline 0.1s;}.tag-modal-chip:hover{filter:brightness(1.12);}';
+    document.head.appendChild(style);
+})();
+
 </script>
 </body>
 </html>
