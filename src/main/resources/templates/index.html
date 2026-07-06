@@ -401,9 +401,7 @@
         if (!isNaN(lat) && !isNaN(lng) && userLat !== null && userLng !== null) {
             miles = Math.max(0.1, haversine(userLat, userLng, lat, lng));
         }
-        // Date is the primary factor. Distance only penalizes events that are very far away (100+ mi).
-        var distancePenalty = miles < 50 ? 1.0 : Math.pow(miles / 50, 0.2);
-        return Math.pow(daysUntil, 1.0) * distancePenalty;
+        return Math.pow(daysUntil, 1.0) * (miles < 50 ? 1.0 : Math.pow(miles / 50, 0.2));
     }
 
     function showDistances(userLat, userLng) {
@@ -443,7 +441,7 @@
     var urlParams = new URLSearchParams(window.location.search);
     var currentSort = urlParams.get('sort') || 'relevance';
     var cachedLat = parseFloat(localStorage.getItem('revaro_lat'));
-    var cachedLng = parseFloat(localStorage.getItem('revaro_lng'));
+    var cachedLng = parseFloat(localStorgit add .age.getItem('revaro_lng'));
     var hasCache = !isNaN(cachedLat) && !isNaN(cachedLng);
 
     if (hasCache) {
