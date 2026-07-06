@@ -96,20 +96,31 @@
                 <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('eventDateTime')}" th:errors="*{eventDateTime}"></div>
             </div>
 
-            <!-- Recurring -->
+            <!-- Recurring / Specific Dates -->
             <div class="mb-3">
-                <div class="form-check mb-2">
-                    <input type="hidden" name="recurring" value="false"/>
-                    <input class="form-check-input" type="checkbox" id="recurringCheck"
-                           name="recurring" value="true"
-                           th:checked="${eventDto.recurring}"
-                           onchange="toggleRecurring(this.checked)"/>
-                    <label class="form-check-label" for="recurringCheck" style="font-weight:600;">
-                        <i class="bi bi-arrow-repeat me-1" style="color:var(--color-primary-light);"></i>
-                        This is a recurring event
-                    </label>
+                <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+                    <div class="form-check mb-0">
+                        <input type="hidden" name="recurring" value="false"/>
+                        <input class="form-check-input" type="checkbox" id="recurringCheck"
+                               name="recurring" value="true"
+                               th:checked="${eventDto.recurring}"
+                               onchange="toggleRecurring(this.checked)"/>
+                        <label class="form-check-label" for="recurringCheck" style="font-weight:600;">
+                            <i class="bi bi-arrow-repeat me-1" style="color:var(--color-primary-light);"></i>
+                            Recurring event
+                        </label>
+                    </div>
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="specificDatesCheck"
+                               onchange="toggleSpecificDates(this.checked)"/>
+                        <label class="form-check-label" for="specificDatesCheck" style="font-weight:600;">
+                            <i class="bi bi-calendar-week me-1" style="color:var(--color-primary-light);"></i>
+                            Specific dates
+                        </label>
+                    </div>
                 </div>
 
+                <!-- Recurring panel -->
                 <div id="recurringOptions"
                      th:style="${eventDto.recurring} ? 'display:block;' : 'display:none;'"
                      style="display:none;background:var(--color-surface-raised);border:1px solid var(--color-border);
@@ -132,14 +143,49 @@
                                 Max 52 occurrences will be created.
                             </div>
                         </div>
-                        <div class="col-md-4" id="recurringPreview"
-                             style="display:flex;align-items:flex-end;">
+                        <div class="col-md-4" style="display:flex;align-items:flex-end;">
                             <div style="font-size:0.78rem;color:var(--color-text-muted);padding-bottom:0.25rem;">
                                 <i class="bi bi-info-circle me-1"></i>
-                                <span id="recurringCount">Select a frequency and end date to see how many events will be created.</span>
+                                <span id="recurringCount">Select a frequency and end date to preview.</span>
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Specific dates panel -->
+                <div id="specificDatesOptions"
+                     style="display:none;background:var(--color-surface-raised);border:1px solid var(--color-border);
+                            border-radius:var(--radius-md);padding:1rem;margin-top:0.5rem;">
+                    <p style="font-size:0.82rem;color:var(--color-text-muted);margin-bottom:0.75rem;">
+                        Click dates below to select them. Each selected date creates a separate event at the same time.
+                    </p>
+
+                    <!-- Month navigation -->
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <button type="button" onclick="prevMonth()" class="btn btn-sm btn-outline-revaro">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <span id="calMonthLabel" style="font-weight:700;font-size:0.95rem;min-width:140px;text-align:center;"></span>
+                        <button type="button" onclick="nextMonth()" class="btn btn-sm btn-outline-revaro">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Calendar grid -->
+                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:0.75rem;">
+                        <div th:each="d : ${ {'Su','Mo','Tu','We','Th','Fr','Sa'} }"
+                             style="text-align:center;font-size:0.7rem;font-weight:700;
+                                    color:var(--color-text-muted);padding:4px 0;" th:text="${d}">Su</div>
+                    </div>
+                    <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
+
+                    <!-- Selected dates summary -->
+                    <div id="selectedDatesSummary" style="margin-top:0.75rem;font-size:0.8rem;color:var(--color-text-muted);">
+                        No dates selected yet.
+                    </div>
+
+                    <!-- Hidden inputs for selected dates — submitted with form -->
+                    <div id="specificDateInputs"></div>
                 </div>
             </div>
 
@@ -457,8 +503,6 @@ if (imageInput) {
             var mm = Math.round(parseInt(timeParts[1]) / 15) * 15;
             if (mm === 60) { mm = 0; hh = String(parseInt(hh) + 1).padStart(2,'0'); }
             timePicker.value = hh + ':' + String(mm).padStart(2,'0');
-            // Normalize hidden field to exact format Spring expects
-            hidden.value = datePicker.value + 'T' + timePicker.value;
         }
     }
 
@@ -473,10 +517,138 @@ if (imageInput) {
     timePicker.addEventListener('change', updateHidden);
 })();
 
+// ── Specific dates calendar ────────────────────────────────────────────────
+var selectedDates = new Set();
+var calYear = new Date().getFullYear();
+var calMonth = new Date().getMonth();
+var MONTHS = ['January','February','March','April','May','June',
+              'July','August','September','October','November','December'];
+
+window.toggleSpecificDates = function(checked) {
+    var panel = document.getElementById('specificDatesOptions');
+    panel.style.display = checked ? 'block' : 'none';
+    // Uncheck recurring if specific dates is checked
+    if (checked) {
+        document.getElementById('recurringCheck').checked = false;
+        document.querySelector('[name="recurring"][value="true"]').checked = false;
+        document.getElementById('recurringOptions').style.display = 'none';
+        renderCalendar();
+    } else {
+        clearSpecificDates();
+    }
+};
+
+window.prevMonth = function() {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+};
+
+window.nextMonth = function() {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+};
+
+function renderCalendar() {
+    document.getElementById('calMonthLabel').textContent = MONTHS[calMonth] + ' ' + calYear;
+    var grid = document.getElementById('calGrid');
+    grid.innerHTML = '';
+    var firstDay = new Date(calYear, calMonth, 1).getDay();
+    var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    var today = new Date(); today.setHours(0,0,0,0);
+
+    // Empty cells before first day
+    for (var i = 0; i < firstDay; i++) {
+        var empty = document.createElement('div');
+        grid.appendChild(empty);
+    }
+
+    // Day cells
+    for (var d = 1; d <= daysInMonth; d++) {
+        var date = new Date(calYear, calMonth, d);
+        var dateStr = calYear + '-' + String(calMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+        var isPast = date < today;
+        var isSelected = selectedDates.has(dateStr);
+
+        var cell = document.createElement('div');
+        cell.textContent = d;
+        cell.style.cssText = 'text-align:center;padding:6px 2px;border-radius:6px;font-size:0.82rem;cursor:' +
+            (isPast ? 'not-allowed' : 'pointer') + ';font-weight:600;transition:all 0.1s;' +
+            (isPast ? 'color:var(--color-border);' :
+             isSelected ? 'background:var(--color-primary-light);color:#fff;' :
+             'background:var(--color-surface);color:var(--color-text);');
+        cell.style.border = isSelected ? '2px solid var(--color-primary-light)' : '2px solid transparent';
+
+        if (!isPast) {
+            (function(ds, el) {
+                el.addEventListener('click', function() { toggleDate(ds, el); });
+                el.addEventListener('mouseenter', function() {
+                    if (!selectedDates.has(ds)) el.style.background = 'var(--color-surface-raised)';
+                });
+                el.addEventListener('mouseleave', function() {
+                    if (!selectedDates.has(ds)) el.style.background = 'var(--color-surface)';
+                });
+            })(dateStr, cell);
+        }
+        grid.appendChild(cell);
+    }
+}
+
+function toggleDate(dateStr, el) {
+    if (selectedDates.has(dateStr)) {
+        selectedDates.delete(dateStr);
+        el.style.background = 'var(--color-surface)';
+        el.style.color = 'var(--color-text)';
+        el.style.border = '2px solid transparent';
+    } else {
+        selectedDates.add(dateStr);
+        el.style.background = 'var(--color-primary-light)';
+        el.style.color = '#fff';
+        el.style.border = '2px solid var(--color-primary-light)';
+    }
+    updateSpecificDateInputs();
+}
+
+function updateSpecificDateInputs() {
+    var container = document.getElementById('specificDateInputs');
+    var summary = document.getElementById('selectedDatesSummary');
+    container.innerHTML = '';
+    var sorted = Array.from(selectedDates).sort();
+    sorted.forEach(function(ds) {
+        var inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'specificDates';
+        inp.value = ds;
+        container.appendChild(inp);
+    });
+    if (sorted.length === 0) {
+        summary.textContent = 'No dates selected yet.';
+    } else {
+        summary.textContent = sorted.length + ' date' + (sorted.length !== 1 ? 's' : '') + ' selected: ' +
+            sorted.map(function(ds) {
+                var parts = ds.split('-');
+                return MONTHS[parseInt(parts[1])-1] + ' ' + parseInt(parts[2]);
+            }).join(', ');
+    }
+}
+
+function clearSpecificDates() {
+    selectedDates.clear();
+    document.getElementById('specificDateInputs').innerHTML = '';
+    document.getElementById('selectedDatesSummary').textContent = 'No dates selected yet.';
+}
+
 // ── Recurring toggle ───────────────────────────────────────────────────────
 window.toggleRecurring = function(checked) {
     document.getElementById('recurringOptions').style.display = checked ? 'block' : 'none';
-    if (checked) updateRecurringCount();
+    if (checked) {
+        // Uncheck specific dates if recurring is checked
+        document.getElementById('specificDatesCheck').checked = false;
+        document.getElementById('specificDatesOptions').style.display = 'none';
+        clearSpecificDates();
+        updateRecurringCount();
+    }
 };
 
 function updateRecurringCount() {

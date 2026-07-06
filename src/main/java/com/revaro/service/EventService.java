@@ -88,8 +88,13 @@ public class EventService {
             tags = new HashSet<>(tagRepository.findAllById(dto.getTagIds()));
         }
 
-        // Build list of dates
-        List<LocalDateTime> dates = buildRecurringDates(dto);
+        // Build list of dates — either recurring or specific hand-picked dates
+        List<LocalDateTime> dates;
+        if (dto.getSpecificDates() != null && !dto.getSpecificDates().isEmpty()) {
+            dates = buildSpecificDates(dto);
+        } else {
+            dates = buildRecurringDates(dto);
+        }
         boolean isSeries = dates.size() > 1;
 
         Event firstSaved = null;
@@ -160,6 +165,25 @@ public class EventService {
     }
 
     /**
+     * Builds a list of specific hand-picked dates from the DTO.
+     */
+    private List<LocalDateTime> buildSpecificDates(EventDto dto) {
+        List<LocalDateTime> dates = new ArrayList<>();
+        java.time.LocalTime time = dto.getEventDateTime() != null
+                ? dto.getEventDateTime().toLocalTime()
+                : java.time.LocalTime.of(9, 0);
+
+        for (String dateStr : dto.getSpecificDates()) {
+            try {
+                LocalDate date = LocalDate.parse(dateStr);
+                dates.add(date.atTime(time));
+            } catch (Exception ignored) {}
+        }
+        dates.sort(java.util.Comparator.naturalOrder());
+        return dates;
+    }
+
+    /**
      * Create recurring future events based on an edited event.
      * Skips the first date (the event being edited) and creates all subsequent ones.
      */
@@ -172,7 +196,12 @@ public class EventService {
             dto.setEventDateTime(original.getEventDateTime());
         }
 
-        List<LocalDateTime> dates = buildRecurringDates(dto);
+        List<LocalDateTime> dates;
+        if (dto.getSpecificDates() != null && !dto.getSpecificDates().isEmpty()) {
+            dates = buildSpecificDates(dto);
+        } else {
+            dates = buildRecurringDates(dto);
+        }
         if (dates.size() <= 1) return; // No additional dates
 
         Set<Tag> tags = original.getTags() != null ? original.getTags() : new java.util.HashSet<>();

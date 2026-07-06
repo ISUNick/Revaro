@@ -121,6 +121,12 @@ public class EventDto {
     public List<Long> getTagIds() { return tagIds; }
     public void setTagIds(List<Long> tagIds) { this.tagIds = tagIds != null ? tagIds : new ArrayList<>(); }
 
+    // Specific hand-picked dates (alternative to recurring)
+    private List<String> specificDates = new ArrayList<>(); // format: yyyy-MM-dd
+
+    public List<String> getSpecificDates() { return specificDates; }
+    public void setSpecificDates(List<String> specificDates) { this.specificDates = specificDates != null ? specificDates : new ArrayList<>(); }
+
     public boolean isRecurring() { return recurring; }
     public void setRecurring(boolean recurring) { this.recurring = recurring; }
 
