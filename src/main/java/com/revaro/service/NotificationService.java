@@ -77,6 +77,13 @@ public class NotificationService {
         notificationRepository.markAllAsRead(user);
     }
 
+    public void notifyMention(User actor, User mentioned, Event event) {
+        if (mentioned.getId().equals(actor.getId())) return;
+        Notification n = new Notification(mentioned, actor,
+                NotificationType.MENTION, event, null);
+        notificationRepository.save(n);
+    }
+
     public void markAsRead(Long notificationId, User user) {
         notificationRepository.findById(notificationId).ifPresent(n -> {
             if (n.getRecipient().getId().equals(user.getId())) {

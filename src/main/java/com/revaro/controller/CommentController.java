@@ -2,6 +2,8 @@ package com.revaro.controller;
 
 import com.revaro.entity.Comment;
 import com.revaro.entity.Event;
+import com.revaro.entity.User;
+import com.revaro.repository.UserRepository;
 import com.revaro.security.UserDetailsImpl;
 import com.revaro.service.CommentService;
 import com.revaro.service.EventService;
@@ -12,6 +14,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 @Controller
 @RequestMapping("/events/{eventId}/comments")
 public class CommentController {
@@ -19,13 +24,18 @@ public class CommentController {
     private final CommentService commentService;
     private final EventService eventService;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
+
+    private static final Pattern MENTION_PATTERN = Pattern.compile("@([a-zA-Z0-9_]+)");
 
     public CommentController(CommentService commentService,
                              EventService eventService,
-                             NotificationService notificationService) {
+                             NotificationService notificationService,
+                             UserRepository userRepository) {
         this.commentService = commentService;
         this.eventService = eventService;
         this.notificationService = notificationService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping
@@ -38,9 +48,23 @@ public class CommentController {
         Event event = eventService.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found."));
 
+        User actor = principal.getUser();
+
         try {
-            commentService.addComment(principal.getUser(), event, content);
-            notificationService.notifyComment(principal.getUser(), event);
+            commentService.addComment(actor, event, content);
+
+            // Notify event owner of new comment
+            notificationService.notifyComment(actor, event);
+
+            // Parse @mentions and notify each mentioned user
+            Matcher matcher = MENTION_PATTERN.matcher(content);
+            while (matcher.find()) {
+                String mentionedUsername = matcher.group(1);
+                userRepository.findByUsername(mentionedUsername).ifPresent(mentionedUser -> {
+                    notificationService.notifyMention(actor, mentionedUser, event);
+                });
+            }
+
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
@@ -72,11 +96,28 @@ public class CommentController {
         Comment comment = commentService.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("Comment not found."));
 
-        boolean liked = commentService.toggleLike(principal.getUser(), comment);
+        User actor = principal.getUser();
+        boolean liked = commentService.toggleLike(actor, comment);
         if (liked) {
-            notificationService.notifyCommentLiked(principal.getUser(), comment);
+            notificationService.notifyCommentLiked(actor, comment);
         }
 
         return "redirect:/events/" + eventId + "#comment-" + commentId;
+    }
+
+    // ── Autocomplete endpoint for @ mentions ──────────────────────────────────
+    @GetMapping("/mention-search")
+    @ResponseBody
+    public java.util.List<java.util.Map<String, String>> mentionSearch(
+            @RequestParam String q) {
+        if (q == null || q.length() < 1) return java.util.List.of();
+        return userRepository.findByUsernameContainingIgnoreCase(q)
+                .stream()
+                .limit(6)
+                .map(u -> java.util.Map.of(
+                        "username", u.getUsername(),
+                        "avatar", u.getProfileImage() != null ? u.getProfileImage() : ""
+                ))
+                .toList();
     }
 }

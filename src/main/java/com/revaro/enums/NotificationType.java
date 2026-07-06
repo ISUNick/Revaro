@@ -6,5 +6,6 @@ public enum NotificationType {
     RSVP_INTERESTED,
     COMMENT_LIKED,
     EVENT_CANCELLED,
-    EVENT_POSTPONED
+    EVENT_POSTPONED,
+    MENTION
 }

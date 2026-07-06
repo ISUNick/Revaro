@@ -331,13 +331,20 @@
 
                 <!-- Add comment form -->
                 <div sec:authorize="isAuthenticated()" class="mb-4">
-                    <form th:action="@{/events/{id}/comments(id=${event.id})}" method="post">
+                    <form th:action="@{/events/{id}/comments(id=${event.id})}" method="post" id="commentForm">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                        <div class="mb-2">
-                            <textarea name="content" class="form-control" rows="3"
-                                      placeholder="Share your thoughts about this event..."
+                        <div class="mb-2" style="position:relative;">
+                            <textarea name="content" class="form-control" rows="3" id="commentInput"
+                                      placeholder="Share your thoughts... Use @ to mention someone"
                                       maxlength="2000" required
-                                      style="resize:vertical;"></textarea>
+                                      style="resize:vertical;"
+                                      oninput="handleMentionInput(this)"></textarea>
+                            <!-- @ mention dropdown -->
+                            <div id="mentionDropdown"
+                                 style="display:none;position:absolute;left:0;right:0;top:100%;z-index:999;
+                                        background:var(--color-surface);border:1px solid var(--color-border);
+                                        border-radius:var(--radius-md);box-shadow:0 4px 20px rgba(0,0,0,0.3);
+                                        max-height:200px;overflow-y:auto;"></div>
                         </div>
                         <button type="submit" class="btn btn-primary-revaro btn-sm">
                             <i class="bi bi-chat-dots me-1"></i>Post Comment
@@ -401,6 +408,16 @@
                                     <i class="bi bi-heart"></i>
                                     <span th:text="${comment.likeCount}">0</span>
                                 </span>
+
+                                <!-- Reply button -->
+                                <button type="button"
+                                        sec:authorize="isAuthenticated()"
+                                        th:attr="data-username=${comment.user.username}"
+                                        onclick="replyToComment(this.dataset.username)"
+                                        class="comment-like-btn"
+                                        style="color:var(--color-text-muted);font-size:0.75rem;">
+                                    <i class="bi bi-reply me-1"></i>Reply
+                                </button>
 
                                 <!-- Delete (owner or admin) -->
                                 <form th:if="${currentUser != null and (currentUser.id == comment.user.id or currentUser.admin)}"
@@ -499,6 +516,96 @@ function shareEvent() {
         }
     }).catch(function() { prompt('Copy this link:', url); });
 }
+</script>
+
+<script>
+// ── @ Mention autocomplete ─────────────────────────────────────────────────
+var mentionDropdown = document.getElementById('mentionDropdown');
+var commentInput = document.getElementById('commentInput');
+var activeMentionStart = -1;
+var eventId = window.location.pathname.split('/')[2];
+
+function handleMentionInput(textarea) {
+    var text = textarea.value;
+    var cursor = textarea.selectionStart;
+
+    // Find if cursor is inside an @mention
+    var beforeCursor = text.substring(0, cursor);
+    var mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+
+    if (mentionMatch) {
+        var query = mentionMatch[1];
+        activeMentionStart = beforeCursor.lastIndexOf('@');
+        if (query.length >= 0) {
+            fetchMentions(query);
+        }
+    } else {
+        closeMentionDropdown();
+    }
+}
+
+function fetchMentions(query) {
+    fetch('/events/' + eventId + '/comments/mention-search?q=' + encodeURIComponent(query))
+        .then(function(r) { return r.json(); })
+        .then(function(users) {
+            if (!users.length) { closeMentionDropdown(); return; }
+            mentionDropdown.innerHTML = '';
+            users.forEach(function(u) {
+                var item = document.createElement('div');
+                item.style.cssText = 'display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0.75rem;cursor:pointer;transition:background 0.1s;';
+                item.innerHTML = (u.avatar
+                    ? '<img src="' + u.avatar + '" style="width:24px;height:24px;border-radius:50%;object-fit:cover;"/>'
+                    : '<div style="width:24px;height:24px;border-radius:50%;background:var(--color-primary);display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;">' + u.username.charAt(0).toUpperCase() + '</div>') +
+                    '<span style="font-size:0.875rem;font-weight:600;color:var(--color-text);">@' + u.username + '</span>';
+                item.addEventListener('mouseenter', function() { this.style.background = 'var(--color-surface-raised)'; });
+                item.addEventListener('mouseleave', function() { this.style.background = ''; });
+                item.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    insertMention(u.username);
+                });
+                mentionDropdown.appendChild(item);
+            });
+            mentionDropdown.style.display = 'block';
+        })
+        .catch(function() { closeMentionDropdown(); });
+}
+
+function insertMention(username) {
+    var text = commentInput.value;
+    var beforeMention = text.substring(0, activeMentionStart);
+    var afterCursor = text.substring(commentInput.selectionStart);
+    commentInput.value = beforeMention + '@' + username + ' ' + afterCursor;
+    commentInput.focus();
+    var newPos = beforeMention.length + username.length + 2;
+    commentInput.setSelectionRange(newPos, newPos);
+    closeMentionDropdown();
+}
+
+function closeMentionDropdown() {
+    if (mentionDropdown) mentionDropdown.style.display = 'none';
+    activeMentionStart = -1;
+}
+
+// Close on click outside
+document.addEventListener('click', function(e) {
+    if (e.target !== commentInput) closeMentionDropdown();
+});
+
+// Close on escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeMentionDropdown();
+});
+
+// ── Reply button ───────────────────────────────────────────────────────────
+window.replyToComment = function(username) {
+    if (!commentInput) return;
+    commentInput.value = '@' + username + ' ';
+    commentInput.focus();
+    commentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Position cursor at end
+    var len = commentInput.value.length;
+    commentInput.setSelectionRange(len, len);
+};
 </script>
 </body>
 </html>

@@ -90,6 +90,7 @@ public class Notification {
             case COMMENT_LIKED     -> actorName + " liked your comment";
             case EVENT_CANCELLED   -> eventTitle + " has been cancelled";
             case EVENT_POSTPONED   -> eventTitle + " has been postponed";
+            case MENTION           -> actorName + " mentioned you in a comment on " + eventTitle;
         };
     }
 

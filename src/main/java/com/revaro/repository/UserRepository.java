@@ -24,4 +24,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRole(Role role);
 
     List<User> findByUsernameContainingIgnoreCase(String username);
+
+    // Top users by events created — for filling user search row
+    @org.springframework.data.jpa.repository.Query("SELECT u FROM User u LEFT JOIN Event e ON e.creator = u GROUP BY u ORDER BY COUNT(e) DESC")
+    List<User> findTopByEventCount(org.springframework.data.domain.Pageable pageable);
 }
