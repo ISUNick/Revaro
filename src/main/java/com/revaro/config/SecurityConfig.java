@@ -55,6 +55,7 @@ public class SecurityConfig {
                 .requestMatchers("/", "/events", "/events/{id}").permitAll()
                 .requestMatchers("/register", "/login", "/logout").permitAll()
                 .requestMatchers("/auth/forgot-password", "/auth/reset-password").permitAll()
+                .requestMatchers("/api/users/*/preview").permitAll()
                 .requestMatchers("/sitemap.xml", "/robots.txt").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
                 .requestMatchers("/error").permitAll()

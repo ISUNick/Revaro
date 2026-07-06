@@ -40,6 +40,22 @@ public class ProfileController {
         return "user/profile";
     }
 
+    // ── Mention hover preview API ──────────────────────────────────────────────
+    @GetMapping("/api/users/{username}/preview")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public java.util.Map<String, Object> userPreview(@PathVariable String username) {
+        User user = userService.findByUsername(username).orElse(null);
+        if (user == null) return java.util.Map.of("error", "not found");
+        return java.util.Map.of(
+            "username", user.getUsername(),
+            "avatar", user.getProfileImage() != null ? user.getProfileImage() : "",
+            "revPoints", userService.calculateRevPoints(user),
+            "joined", user.getCreatedAt() != null
+                ? user.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy"))
+                : "Unknown"
+        );
+    }
+
     // ── Own profile (redirect to username route) ──────────────────────────────
 
     @GetMapping("/profile")

@@ -53,16 +53,21 @@ public class CommentController {
         try {
             commentService.addComment(actor, event, content);
 
-            // Notify event owner of new comment
-            notificationService.notifyComment(actor, event);
-
-            // Parse @mentions and notify each mentioned user
+            // Parse @mentions first — collect who gets mentioned
+            java.util.Set<Long> mentionedUserIds = new java.util.HashSet<>();
             Matcher matcher = MENTION_PATTERN.matcher(content);
             while (matcher.find()) {
                 String mentionedUsername = matcher.group(1);
                 userRepository.findByUsername(mentionedUsername).ifPresent(mentionedUser -> {
+                    mentionedUserIds.add(mentionedUser.getId());
                     notificationService.notifyMention(actor, mentionedUser, event);
                 });
+            }
+
+            // Notify event owner of new comment ONLY if they weren't already
+            // notified via a mention — avoids double notification on their own post
+            if (!mentionedUserIds.contains(event.getCreator().getId())) {
+                notificationService.notifyComment(actor, event);
             }
 
         } catch (IllegalArgumentException e) {

@@ -10,6 +10,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" th:href="@{/css/revaro.css}"/>
     <style>
+        .mention-tag {
+            color: var(--color-primary-light);
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 3px;
+            padding: 0 2px;
+        }
+        .mention-tag:hover {
+            background: rgba(42,111,234,0.12);
+            text-decoration: underline;
+        }
         .maps-link:hover .event-info-value,
         .maps-link:hover div {
             text-decoration: underline;
@@ -595,6 +606,85 @@ document.addEventListener('click', function(e) {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeMentionDropdown();
 });
+
+// ── @ mention links with hover preview ────────────────────────────────────
+(function() {
+    // Find all comment content divs and linkify @mentions
+    document.querySelectorAll('.comment-content').forEach(function(el) {
+        el.innerHTML = el.textContent.replace(/@([a-zA-Z0-9_]+)/g, function(match, username) {
+            return '<span class="mention-tag" data-username="' + username + '">' + match + '</span>';
+        });
+    });
+
+    // Create hover preview card
+    var preview = document.createElement('div');
+    preview.id = 'mentionPreview';
+    preview.style.cssText = 'display:none;position:fixed;z-index:9999;background:var(--color-surface);' +
+        'border:1px solid var(--color-border);border-radius:var(--radius-md);padding:0.75rem 1rem;' +
+        'box-shadow:0 8px 30px rgba(0,0,0,0.4);min-width:200px;pointer-events:none;';
+    document.body.appendChild(preview);
+
+    var hideTimer;
+
+    document.addEventListener('mouseover', function(e) {
+        var tag = e.target.closest('.mention-tag');
+        if (!tag) return;
+        clearTimeout(hideTimer);
+        var username = tag.dataset.username;
+        var rect = tag.getBoundingClientRect();
+
+        // Show loading state
+        preview.innerHTML = '<div style="font-size:0.8rem;color:var(--color-text-muted);">Loading...</div>';
+        preview.style.display = 'block';
+        preview.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+        preview.style.top = (rect.bottom + 6 + window.scrollY) + 'px';
+
+        // Fetch user info
+        fetch('/api/users/' + username + '/preview')
+            .then(function(r) { return r.json(); })
+            .then(function(u) {
+                preview.innerHTML =
+                    '<div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.4rem;">' +
+                        (u.avatar
+                            ? '<img src="' + u.avatar + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;"/>'
+                            : '<div style="width:36px;height:36px;border-radius:50%;background:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;">' + u.username.charAt(0).toUpperCase() + '</div>') +
+                        '<div>' +
+                            '<div style="font-weight:700;font-size:0.875rem;color:var(--color-text);">@' + u.username + '</div>' +
+                            '<div style="font-size:0.72rem;color:var(--color-text-muted);">' + u.revPoints + ' Rev Points</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="font-size:0.72rem;color:var(--color-text-muted);">Joined ' + u.joined + '</div>' +
+                    '<a href="/profile/' + u.username + '" style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--color-primary-light);font-weight:600;">View Profile →</a>';
+                preview.style.pointerEvents = 'auto';
+            })
+            .catch(function() {
+                preview.innerHTML = '<a href="/profile/' + username + '" style="font-size:0.875rem;font-weight:700;color:var(--color-primary-light);">@' + username + '</a>';
+            });
+    });
+
+    document.addEventListener('mouseout', function(e) {
+        var tag = e.target.closest('.mention-tag');
+        if (!tag) return;
+        hideTimer = setTimeout(function() {
+            preview.style.display = 'none';
+            preview.style.pointerEvents = 'none';
+        }, 200);
+    });
+
+    // Click @mention goes to profile
+    document.addEventListener('click', function(e) {
+        var tag = e.target.closest('.mention-tag');
+        if (!tag) return;
+        window.location.href = '/profile/' + tag.dataset.username;
+    });
+
+    // Keep preview visible when hovering over it
+    preview.addEventListener('mouseenter', function() { clearTimeout(hideTimer); });
+    preview.addEventListener('mouseleave', function() {
+        preview.style.display = 'none';
+        preview.style.pointerEvents = 'none';
+    });
+})();
 
 // ── Reply button ───────────────────────────────────────────────────────────
 window.replyToComment = function(username) {
