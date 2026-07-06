@@ -401,7 +401,9 @@
         if (!isNaN(lat) && !isNaN(lng) && userLat !== null && userLng !== null) {
             miles = Math.max(0.1, haversine(userLat, userLng, lat, lng));
         }
-        return Math.pow(daysUntil, 0.6) * Math.pow(miles, 0.5);
+        // Date is the primary factor. Distance only penalizes events that are very far away (100+ mi).
+        var distancePenalty = miles < 50 ? 1.0 : Math.pow(miles / 50, 0.2);
+        return Math.pow(daysUntil, 1.0) * distancePenalty;
     }
 
     function showDistances(userLat, userLng) {
