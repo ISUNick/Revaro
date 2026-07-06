@@ -611,9 +611,12 @@ document.addEventListener('keydown', function(e) {
 (function() {
     // Find all comment content divs and linkify @mentions
     document.querySelectorAll('.comment-content').forEach(function(el) {
-        el.innerHTML = el.textContent.replace(/@([a-zA-Z0-9_]+)/g, function(match, username) {
-            return '<span class="mention-tag" data-username="' + username + '">' + match + '</span>';
-        });
+        var text = el.textContent || el.innerText;
+        if (!text.includes('@')) return;
+        // Replace @username with clickable span
+        var escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        el.innerHTML = escaped.replace(/@([a-zA-Z0-9_]+)/g,
+            '<span class="mention-tag" data-username="$1" style="color:var(--color-primary-light);font-weight:600;cursor:pointer;border-radius:3px;padding:0 2px;">@$1</span>');
     });
 
     // Create hover preview card
