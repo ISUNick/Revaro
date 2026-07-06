@@ -96,95 +96,51 @@
                 <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('eventDateTime')}" th:errors="*{eventDateTime}"></div>
             </div>
 
-            <!-- Recurring / Specific Dates -->
+            <!-- Recurring Events — Calendar Picker -->
             <div class="mb-3">
-                <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
-                    <div class="form-check mb-0">
-                        <input type="hidden" name="recurring" value="false"/>
-                        <input class="form-check-input" type="checkbox" id="recurringCheck"
-                               name="recurring" value="true"
-                               th:checked="${eventDto.recurring}"
-                               onchange="toggleRecurring(this.checked)"/>
-                        <label class="form-check-label" for="recurringCheck" style="font-weight:600;">
-                            <i class="bi bi-arrow-repeat me-1" style="color:var(--color-primary-light);"></i>
-                            Recurring event
-                        </label>
-                    </div>
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" type="checkbox" id="specificDatesCheck"
-                               onchange="toggleSpecificDates(this.checked)"/>
-                        <label class="form-check-label" for="specificDatesCheck" style="font-weight:600;">
-                            <i class="bi bi-calendar-week me-1" style="color:var(--color-primary-light);"></i>
-                            Specific dates
-                        </label>
-                    </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="recurringCheck"
+                           onchange="toggleRecurring(this.checked)"/>
+                    <label class="form-check-label" for="recurringCheck" style="font-weight:600;">
+                        <i class="bi bi-arrow-repeat me-1" style="color:var(--color-primary-light);"></i>
+                        Recurring event
+                    </label>
                 </div>
 
-                <!-- Recurring panel -->
                 <div id="recurringOptions"
-                     th:style="${eventDto.recurring} ? 'display:block;' : 'display:none;'"
-                     style="display:none;background:var(--color-surface-raised);border:1px solid var(--color-border);
-                            border-radius:var(--radius-md);padding:1rem;margin-top:0.5rem;">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label" style="font-size:0.8rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Frequency</label>
-                            <select name="recurringFrequency" class="form-select" th:field="*{recurringFrequency}">
-                                <option value="WEEKLY">Every week</option>
-                                <option value="BIWEEKLY">Every 2 weeks</option>
-                                <option value="MONTHLY">Every month</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" style="font-size:0.8rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">End Date</label>
-                            <input type="date" class="form-control"
-                                   th:field="*{recurringEndDate}"
-                                   style="color-scheme:dark;"/>
-                            <div style="font-size:0.72rem;color:var(--color-text-muted);margin-top:0.3rem;">
-                                Max 52 occurrences will be created.
-                            </div>
-                        </div>
-                        <div class="col-md-4" style="display:flex;align-items:flex-end;">
-                            <div style="font-size:0.78rem;color:var(--color-text-muted);padding-bottom:0.25rem;">
-                                <i class="bi bi-info-circle me-1"></i>
-                                <span id="recurringCount">Select a frequency and end date to preview.</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Specific dates panel -->
-                <div id="specificDatesOptions"
                      style="display:none;background:var(--color-surface-raised);border:1px solid var(--color-border);
                             border-radius:var(--radius-md);padding:1rem;margin-top:0.5rem;">
                     <p style="font-size:0.82rem;color:var(--color-text-muted);margin-bottom:0.75rem;">
-                        Click dates below to select them. Each selected date creates a separate event at the same time.
+                        Click every date this event happens. An event will be created for each date at the same time.
                     </p>
-
                     <!-- Month navigation -->
-                    <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="d-flex align-items-center gap-3 mb-2">
                         <button type="button" onclick="prevMonth()" class="btn btn-sm btn-outline-revaro">
                             <i class="bi bi-chevron-left"></i>
                         </button>
-                        <span id="calMonthLabel" style="font-weight:700;font-size:0.95rem;min-width:140px;text-align:center;"></span>
+                        <span id="calMonthLabel" style="font-weight:700;font-size:0.95rem;min-width:150px;text-align:center;"></span>
                         <button type="button" onclick="nextMonth()" class="btn btn-sm btn-outline-revaro">
                             <i class="bi bi-chevron-right"></i>
                         </button>
                     </div>
-
-                    <!-- Calendar grid -->
-                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:0.75rem;">
-                        <div th:each="d : ${ {'Su','Mo','Tu','We','Th','Fr','Sa'} }"
-                             style="text-align:center;font-size:0.7rem;font-weight:700;
-                                    color:var(--color-text-muted);padding:4px 0;" th:text="${d}">Su</div>
+                    <!-- Day headers -->
+                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">
+                        <div style="text-align:center;font-size:0.68rem;font-weight:700;color:var(--color-text-muted);">Su</div>
+                        <div style="text-align:center;font-size:0.68rem;font-weight:700;color:var(--color-text-muted);">Mo</div>
+                        <div style="text-align:center;font-size:0.68rem;font-weight:700;color:var(--color-text-muted);">Tu</div>
+                        <div style="text-align:center;font-size:0.68rem;font-weight:700;color:var(--color-text-muted);">We</div>
+                        <div style="text-align:center;font-size:0.68rem;font-weight:700;color:var(--color-text-muted);">Th</div>
+                        <div style="text-align:center;font-size:0.68rem;font-weight:700;color:var(--color-text-muted);">Fr</div>
+                        <div style="text-align:center;font-size:0.68rem;font-weight:700;color:var(--color-text-muted);">Sa</div>
                     </div>
+                    <!-- Calendar grid -->
                     <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
-
-                    <!-- Selected dates summary -->
-                    <div id="selectedDatesSummary" style="margin-top:0.75rem;font-size:0.8rem;color:var(--color-text-muted);">
+                    <!-- Summary -->
+                    <div id="selectedDatesSummary"
+                         style="margin-top:0.75rem;font-size:0.8rem;color:var(--color-text-muted);">
                         No dates selected yet.
                     </div>
-
-                    <!-- Hidden inputs for selected dates — submitted with form -->
+                    <!-- Hidden date inputs -->
                     <div id="specificDateInputs"></div>
                 </div>
             </div>
@@ -517,25 +473,17 @@ if (imageInput) {
     timePicker.addEventListener('change', updateHidden);
 })();
 
-// ── Specific dates calendar ────────────────────────────────────────────────
+// ── Recurring calendar ────────────────────────────────────────────────────
 var selectedDates = new Set();
 var calYear = new Date().getFullYear();
 var calMonth = new Date().getMonth();
 var MONTHS = ['January','February','March','April','May','June',
               'July','August','September','October','November','December'];
 
-window.toggleSpecificDates = function(checked) {
-    var panel = document.getElementById('specificDatesOptions');
+window.toggleRecurring = function(checked) {
+    var panel = document.getElementById('recurringOptions');
     panel.style.display = checked ? 'block' : 'none';
-    // Uncheck recurring if specific dates is checked
-    if (checked) {
-        document.getElementById('recurringCheck').checked = false;
-        document.querySelector('[name="recurring"][value="true"]').checked = false;
-        document.getElementById('recurringOptions').style.display = 'none';
-        renderCalendar();
-    } else {
-        clearSpecificDates();
-    }
+    if (checked) renderCalendar();
 };
 
 window.prevMonth = function() {
@@ -558,13 +506,10 @@ function renderCalendar() {
     var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
     var today = new Date(); today.setHours(0,0,0,0);
 
-    // Empty cells before first day
     for (var i = 0; i < firstDay; i++) {
-        var empty = document.createElement('div');
-        grid.appendChild(empty);
+        grid.appendChild(document.createElement('div'));
     }
 
-    // Day cells
     for (var d = 1; d <= daysInMonth; d++) {
         var date = new Date(calYear, calMonth, d);
         var dateStr = calYear + '-' + String(calMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
@@ -573,18 +518,37 @@ function renderCalendar() {
 
         var cell = document.createElement('div');
         cell.textContent = d;
-        cell.style.cssText = 'text-align:center;padding:6px 2px;border-radius:6px;font-size:0.82rem;cursor:' +
-            (isPast ? 'not-allowed' : 'pointer') + ';font-weight:600;transition:all 0.1s;' +
-            (isPast ? 'color:var(--color-border);' :
-             isSelected ? 'background:var(--color-primary-light);color:#fff;' :
-             'background:var(--color-surface);color:var(--color-text);');
-        cell.style.border = isSelected ? '2px solid var(--color-primary-light)' : '2px solid transparent';
+        cell.style.cssText = [
+            'text-align:center',
+            'padding:7px 2px',
+            'border-radius:6px',
+            'font-size:0.82rem',
+            'font-weight:600',
+            'transition:all 0.1s',
+            'border:2px solid ' + (isSelected ? 'var(--color-primary-light)' : 'transparent'),
+            'cursor:' + (isPast ? 'not-allowed' : 'pointer'),
+            'background:' + (isPast ? 'transparent' : isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)'),
+            'color:' + (isPast ? 'var(--color-border)' : isSelected ? '#fff' : 'var(--color-text)')
+        ].join(';');
 
         if (!isPast) {
             (function(ds, el) {
-                el.addEventListener('click', function() { toggleDate(ds, el); });
+                el.addEventListener('click', function() {
+                    if (selectedDates.has(ds)) {
+                        selectedDates.delete(ds);
+                        el.style.background = 'var(--color-surface)';
+                        el.style.color = 'var(--color-text)';
+                        el.style.borderColor = 'transparent';
+                    } else {
+                        selectedDates.add(ds);
+                        el.style.background = 'var(--color-primary-light)';
+                        el.style.color = '#fff';
+                        el.style.borderColor = 'var(--color-primary-light)';
+                    }
+                    updateDateInputs();
+                });
                 el.addEventListener('mouseenter', function() {
-                    if (!selectedDates.has(ds)) el.style.background = 'var(--color-surface-raised)';
+                    if (!selectedDates.has(ds)) el.style.background = 'rgba(42,111,234,0.15)';
                 });
                 el.addEventListener('mouseleave', function() {
                     if (!selectedDates.has(ds)) el.style.background = 'var(--color-surface)';
@@ -595,22 +559,7 @@ function renderCalendar() {
     }
 }
 
-function toggleDate(dateStr, el) {
-    if (selectedDates.has(dateStr)) {
-        selectedDates.delete(dateStr);
-        el.style.background = 'var(--color-surface)';
-        el.style.color = 'var(--color-text)';
-        el.style.border = '2px solid transparent';
-    } else {
-        selectedDates.add(dateStr);
-        el.style.background = 'var(--color-primary-light)';
-        el.style.color = '#fff';
-        el.style.border = '2px solid var(--color-primary-light)';
-    }
-    updateSpecificDateInputs();
-}
-
-function updateSpecificDateInputs() {
+function updateDateInputs() {
     var container = document.getElementById('specificDateInputs');
     var summary = document.getElementById('selectedDatesSummary');
     container.innerHTML = '';
@@ -625,155 +574,14 @@ function updateSpecificDateInputs() {
     if (sorted.length === 0) {
         summary.textContent = 'No dates selected yet.';
     } else {
-        summary.textContent = sorted.length + ' date' + (sorted.length !== 1 ? 's' : '') + ' selected: ' +
+        summary.innerHTML = '<strong style="color:var(--color-text);">' + sorted.length + ' date' +
+            (sorted.length !== 1 ? 's' : '') + ' selected:</strong> ' +
             sorted.map(function(ds) {
-                var parts = ds.split('-');
-                return MONTHS[parseInt(parts[1])-1] + ' ' + parseInt(parts[2]);
+                var p = ds.split('-');
+                return MONTHS[parseInt(p[1])-1] + ' ' + parseInt(p[2]);
             }).join(', ');
     }
 }
-
-function clearSpecificDates() {
-    selectedDates.clear();
-    document.getElementById('specificDateInputs').innerHTML = '';
-    document.getElementById('selectedDatesSummary').textContent = 'No dates selected yet.';
-}
-
-// ── Recurring toggle ───────────────────────────────────────────────────────
-window.toggleRecurring = function(checked) {
-    document.getElementById('recurringOptions').style.display = checked ? 'block' : 'none';
-    if (checked) {
-        // Uncheck specific dates if recurring is checked
-        document.getElementById('specificDatesCheck').checked = false;
-        document.getElementById('specificDatesOptions').style.display = 'none';
-        clearSpecificDates();
-        updateRecurringCount();
-    }
-};
-
-function updateRecurringCount() {
-    var freq = document.querySelector('[name="recurringFrequency"]') && document.querySelector('[name="recurringFrequency"]').value;
-    var endDateVal = document.querySelector('[name="recurringEndDate"]') && document.querySelector('[name="recurringEndDate"]').value;
-    var startEl = document.getElementById('datePicker') || document.getElementById('eventDateTime');
-    var startDateVal = startEl ? (startEl.value.split('T')[0] || startEl.value) : null;
-    var el = document.getElementById('recurringCount');
-    if (!freq || !endDateVal || !startDateVal) {
-        if (el) el.textContent = 'Select a frequency and end date to preview.';
-        return;
-    }
-    var start = new Date(startDateVal), end = new Date(endDateVal);
-    if (end <= start) { if (el) el.textContent = 'End date must be after start date.'; return; }
-    var count = 0, current = new Date(start), max = 52;
-    if (freq === 'MONTHLY') {
-        current.setMonth(current.getMonth() + 1);
-        while (current <= end && count < max) { count++; current.setMonth(current.getMonth() + 1); }
-    } else {
-        var days = freq === 'BIWEEKLY' ? 14 : 7;
-        current.setDate(current.getDate() + days);
-        while (current <= end && count < max) { count++; current.setDate(current.getDate() + days); }
-    }
-    var total = count + 1;
-    var label = freq === 'MONTHLY' ? 'monthly' : (freq === 'BIWEEKLY' ? 'bi-weekly' : 'weekly');
-    if (el) el.textContent = total + ' ' + label + ' event' + (total !== 1 ? 's' : '') + ' will be created.';
-}
-var freqEl = document.querySelector('[name="recurringFrequency"]');
-var endEl = document.querySelector('[name="recurringEndDate"]');
-if (freqEl) freqEl.addEventListener('change', updateRecurringCount);
-if (endEl) endEl.addEventListener('change', updateRecurringCount);
-
-
-// ── Tag Picker ─────────────────────────────────────────────────────────────
-(function() {
-    var selectedTags = new Map();
-
-    // Pre-populate from existing hidden inputs (edit mode)
-    document.querySelectorAll('#tagIdInputs input[name="tagIds"]').forEach(function(input) {
-        var label = document.querySelector('.tag-modal-label[data-tag-id="' + input.value + '"]');
-        if (label) {
-            selectedTags.set(input.value, {
-                name: label.dataset.tagName,
-                bg:   label.dataset.tagBg,
-                color:label.dataset.tagColor
-            });
-        }
-    });
-
-    // Render preview on page load (for edit mode)
-    renderPreview();
-
-    // Sync checkboxes when modal opens
-    document.getElementById('tagPickerModal') && document.getElementById('tagPickerModal').addEventListener('show.bs.modal', function() {
-        document.querySelectorAll('.tag-modal-checkbox').forEach(function(cb) {
-            var label = cb.closest('.tag-modal-label');
-            cb.checked = selectedTags.has(label.dataset.tagId);
-            updateChipStyle(cb);
-        });
-        updateCount();
-    });
-
-    // Handle checkbox changes
-    document.querySelectorAll('.tag-modal-checkbox').forEach(function(cb) {
-        cb.addEventListener('change', function() {
-            var label = this.closest('.tag-modal-label');
-            var id = label.dataset.tagId;
-            if (this.checked) {
-                selectedTags.set(id, { name: label.dataset.tagName, bg: label.dataset.tagBg, color: label.dataset.tagColor });
-            } else {
-                selectedTags.delete(id);
-            }
-            updateChipStyle(this);
-            updateCount();
-        });
-    });
-
-    function updateChipStyle(cb) {
-        var chip = cb.nextElementSibling;
-        if (!chip) return;
-        chip.style.outline = cb.checked ? '2px solid white' : '';
-        chip.style.outlineOffset = cb.checked ? '1px' : '';
-        chip.style.transform = cb.checked ? 'translateY(-1px)' : '';
-    }
-
-    function updateCount() {
-        var el = document.getElementById('selectedTagCount');
-        if (el) el.textContent = selectedTags.size + ' tag' + (selectedTags.size !== 1 ? 's' : '') + ' selected';
-    }
-
-    // On modal close — sync hidden inputs and preview
-    document.getElementById('tagPickerModal') && document.getElementById('tagPickerModal').addEventListener('hidden.bs.modal', function() {
-        var container = document.getElementById('tagIdInputs');
-        container.innerHTML = '';
-        selectedTags.forEach(function(info, id) {
-            var input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'tagIds';
-            input.value = id;
-            container.appendChild(input);
-        });
-        renderPreview();
-    });
-
-    function renderPreview() {
-        var display = document.getElementById('selectedTagsDisplay');
-        if (!display) return;
-        display.innerHTML = '';
-        if (selectedTags.size === 0) {
-            display.innerHTML = '<span style="font-size:0.8rem;color:var(--color-text-muted);">No tags selected — click "Add Tags" to choose some.</span>';
-        } else {
-            selectedTags.forEach(function(info) {
-                var span = document.createElement('span');
-                span.textContent = info.name;
-                span.style.cssText = 'font-size:0.75rem;font-weight:600;padding:0.25rem 0.65rem;border-radius:20px;background:' + info.bg + ';color:' + info.color + ';';
-                display.appendChild(span);
-            });
-        }
-    }
-
-    // Chip styles
-    var style = document.createElement('style');
-    style.textContent = '.tag-modal-label{cursor:pointer;margin:0;}.tag-modal-chip{display:inline-flex;align-items:center;padding:0.3rem 0.75rem;border-radius:20px;font-size:0.78rem;font-weight:600;cursor:pointer;user-select:none;transition:transform 0.1s,outline 0.1s;}.tag-modal-chip:hover{filter:brightness(1.12);}';
-    document.head.appendChild(style);
-})();
 
 </script>
 </body>
