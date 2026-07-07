@@ -69,7 +69,7 @@
                         class="btn btn-outline-revaro d-flex align-items-center gap-2"
                         style="white-space:nowrap;position:relative;">
                     <i class="bi bi-sliders"></i> Filters
-                    <span th:if="${(param.type != null and !param.type.empty and param.type[0] != '') or (param.state != null and !param.state.empty and param.state[0] != '') or (param.tag != null and !param.tag.empty) or (param.organizer != null and !param.organizer.empty and param.organizer[0] != '')}"
+                    <span th:if="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] != ''}"
                           style="position:absolute;top:-5px;right:-5px;background:var(--color-primary-light);color:#fff;border-radius:50%;width:14px;height:14px;font-size:0.55rem;font-weight:700;display:flex;align-items:center;justify-content:center;">✓</span>
                 </button>
 
@@ -91,129 +91,102 @@
                 <input type="hidden" name="sort" id="hiddenSort" th:value="${param.sort != null ? param.sort[0] : 'relevance'}"/>
             </div>
 
-            <!-- Filter panel -->
+            <!-- Filter panel — narrows what field the search looks in -->
             <div id="filterPanel"
-                 th:style="${(param.type != null and !param.type.empty and param.type[0] != '') or (param.state != null and !param.state.empty and param.state[0] != '') or (param.tag != null and !param.tag.empty) or (param.organizer != null and !param.organizer.empty and param.organizer[0] != '')} ? 'display:block;' : 'display:none;'"
-                 style="margin-top:0.75rem;padding:1rem;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:var(--radius-md);">
+                 th:style="${param.searchIn != null and !param.searchIn.empty} ? 'display:block;' : 'display:none;'"
+                 style="margin-top:0.6rem;">
 
-                <!-- Event Type chips -->
-                <div class="mb-3">
-                    <div class="filter-section-label mb-1">Event Type</div>
-                    <div class="d-flex flex-wrap gap-2">
-                        <label class="filter-chip-label">
-                            <input type="radio" name="type" value="" style="display:none;"
-                                   th:checked="${param.type == null or param.type.empty or param.type[0] == ''}"
-                                   onchange="this.form.submit()"/>
-                            <span class="filter-chip" th:classappend="${param.type == null or param.type.empty or param.type[0] == ''} ? ' active' : ''">All Types</span>
-                        </label>
-                        <label class="filter-chip-label">
-                            <input type="radio" name="type" value="CAR_MEET" style="display:none;" th:checked="${param.type != null and !param.type.empty and param.type[0] == 'CAR_MEET'}" onchange="this.form.submit()"/>
-                            <span class="filter-chip" th:classappend="${param.type != null and !param.type.empty and param.type[0] == 'CAR_MEET'} ? ' active' : ''">Car Meet</span>
-                        </label>
-                        <label class="filter-chip-label">
-                            <input type="radio" name="type" value="CAR_SHOW" style="display:none;" th:checked="${param.type != null and !param.type.empty and param.type[0] == 'CAR_SHOW'}" onchange="this.form.submit()"/>
-                            <span class="filter-chip" th:classappend="${param.type != null and !param.type.empty and param.type[0] == 'CAR_SHOW'} ? ' active' : ''">Car Show</span>
-                        </label>
-                        <label class="filter-chip-label">
-                            <input type="radio" name="type" value="CRUISE" style="display:none;" th:checked="${param.type != null and !param.type.empty and param.type[0] == 'CRUISE'}" onchange="this.form.submit()"/>
-                            <span class="filter-chip" th:classappend="${param.type != null and !param.type.empty and param.type[0] == 'CRUISE'} ? ' active' : ''">Cruise</span>
-                        </label>
-                        <label class="filter-chip-label">
-                            <input type="radio" name="type" value="TRACK_DAY" style="display:none;" th:checked="${param.type != null and !param.type.empty and param.type[0] == 'TRACK_DAY'}" onchange="this.form.submit()"/>
-                            <span class="filter-chip" th:classappend="${param.type != null and !param.type.empty and param.type[0] == 'TRACK_DAY'} ? ' active' : ''">Track Day</span>
-                        </label>
-                        <label class="filter-chip-label">
-                            <input type="radio" name="type" value="DRAG_STRIP_EVENT" style="display:none;" th:checked="${param.type != null and !param.type.empty and param.type[0] == 'DRAG_STRIP_EVENT'}" onchange="this.form.submit()"/>
-                            <span class="filter-chip" th:classappend="${param.type != null and !param.type.empty and param.type[0] == 'DRAG_STRIP_EVENT'} ? ' active' : ''">Drag Strip</span>
-                        </label>
-                        <label class="filter-chip-label">
-                            <input type="radio" name="type" value="OTHER" style="display:none;" th:checked="${param.type != null and !param.type.empty and param.type[0] == 'OTHER'}" onchange="this.form.submit()"/>
-                            <span class="filter-chip" th:classappend="${param.type != null and !param.type.empty and param.type[0] == 'OTHER'} ? ' active' : ''">Other</span>
-                        </label>
-                    </div>
+                <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:0.5rem;">
+                    Search in:
                 </div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
 
-                <!-- Tags -->
-                <div class="mb-3" th:if="${allTags != null}">
-                    <div class="filter-section-label mb-1">Tags</div>
-                    <div class="d-flex flex-wrap gap-2">
-                        <label th:each="filterTag : ${allTags}" class="filter-chip-label">
-                            <input type="checkbox" name="tag" th:value="${filterTag.name}" style="display:none;"
-                                   th:checked="${param.tag != null and #lists.contains(param.tag, filterTag.name)}"
-                                   onchange="this.form.submit()"/>
-                            <span th:text="${filterTag.name}"
-                                  th:if="${param.tag == null or !#lists.contains(param.tag, filterTag.name)}"
-                                  class="filter-chip">Tag</span>
-                            <span th:text="${filterTag.name}"
-                                  th:unless="${param.tag == null or !#lists.contains(param.tag, filterTag.name)}"
-                                  class="filter-chip active"
-                                  th:style="'background:' + ${filterTag.category.bgColor} + ';color:' + ${filterTag.category.textColor} + ';border-color:' + ${filterTag.category.textColor} + ';'">Tag</span>
-                        </label>
-                    </div>
-                </div>
+                    <!-- Search all (default) -->
+                    <label class="filter-chip-label">
+                        <input type="radio" name="searchIn" value="" style="display:none;"
+                               th:checked="${param.searchIn == null or param.searchIn.empty or param.searchIn[0] == ''}"
+                               onchange="this.form.submit()"/>
+                        <span class="filter-chip"
+                              th:classappend="${param.searchIn == null or param.searchIn.empty or param.searchIn[0] == ''} ? ' active' : ''">
+                            <i class="bi bi-grid me-1"></i>Everything
+                        </span>
+                    </label>
 
-                <!-- Organizer + State -->
-                <div class="row g-2 mb-3">
-                    <div class="col-sm-6">
-                        <div class="filter-section-label mb-1">Organizer only</div>
-                        <input type="text" name="organizer" class="form-control form-control-sm"
-                               th:value="${param.organizer}" placeholder="e.g. Metal Militia"
-                               style="font-size:0.825rem;"/>
-                    </div>
-                    <div class="col-sm-3">
-                        <div class="filter-section-label mb-1">State</div>
-                        <input type="text" name="state" class="form-control form-control-sm"
-                               th:value="${param.state}" placeholder="e.g. IL"
-                               style="font-size:0.825rem;max-width:80px;"/>
-                    </div>
-                </div>
+                    <!-- Tags only -->
+                    <label class="filter-chip-label">
+                        <input type="radio" name="searchIn" value="tags" style="display:none;"
+                               th:checked="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'tags'}"
+                               onchange="this.form.submit()"/>
+                        <span class="filter-chip"
+                              th:classappend="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'tags'} ? ' active' : ''">
+                            <i class="bi bi-tags me-1"></i>Tags
+                        </span>
+                    </label>
 
-                <!-- Distance slider -->
-                <div class="mb-3">
-                    <div class="filter-section-label mb-1">
-                        Distance: <span id="distanceLabel" style="color:var(--color-text);">Any</span>
-                    </div>
-                    <div id="distanceSliderWrap" style="max-width:280px;">
+                    <!-- Organizer only -->
+                    <label class="filter-chip-label">
+                        <input type="radio" name="searchIn" value="organizer" style="display:none;"
+                               th:checked="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'organizer'}"
+                               onchange="this.form.submit()"/>
+                        <span class="filter-chip"
+                              th:classappend="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'organizer'} ? ' active' : ''">
+                            <i class="bi bi-person me-1"></i>Organizer
+                        </span>
+                    </label>
+
+                    <!-- Location only -->
+                    <label class="filter-chip-label">
+                        <input type="radio" name="searchIn" value="location" style="display:none;"
+                               th:checked="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'location'}"
+                               onchange="this.form.submit()"/>
+                        <span class="filter-chip"
+                              th:classappend="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'location'} ? ' active' : ''">
+                            <i class="bi bi-geo-alt me-1"></i>Location
+                        </span>
+                    </label>
+
+                    <!-- Title only -->
+                    <label class="filter-chip-label">
+                        <input type="radio" name="searchIn" value="title" style="display:none;"
+                               th:checked="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'title'}"
+                               onchange="this.form.submit()"/>
+                        <span class="filter-chip"
+                              th:classappend="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'title'} ? ' active' : ''">
+                            <i class="bi bi-type me-1"></i>Event Name
+                        </span>
+                    </label>
+
+                    <span style="width:1px;height:20px;background:var(--color-border);margin:0 0.25rem;"></span>
+
+                    <!-- Distance slider inline -->
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-geo-alt" style="font-size:0.75rem;color:var(--color-text-muted);"></i>
                         <input type="range" class="distance-slider" id="distanceSlider"
                                min="5" max="150" step="5" value="150"
-                               oninput="updateDistanceLabel(this.value)"/>
-                        <div class="d-flex justify-content-between" style="font-size:0.65rem;color:var(--color-text-muted);margin-top:2px;">
-                            <span>5 mi</span><span>150 mi</span>
-                        </div>
+                               oninput="updateDistanceLabel(this.value)"
+                               style="width:100px;"/>
+                        <span id="distanceLabel" style="font-size:0.75rem;color:var(--color-text-muted);min-width:40px;">Any</span>
                     </div>
-                    <div id="locationOffMsg" style="display:none;font-size:0.75rem;color:var(--color-text-muted);margin-top:0.4rem;padding:0.5rem 0.75rem;background:rgba(107,114,128,0.08);border-radius:var(--radius-sm);max-width:320px;">
-                        <i class="bi bi-geo-alt me-1"></i>
-                        Turn on location access in your browser to use distance filtering
-                    </div>
-                </div>
 
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary-revaro btn-sm">Apply</button>
-                    <a th:href="@{/}" class="btn btn-sm" style="color:var(--color-text-muted);border:1px solid var(--color-border-subtle);">
-                        <i class="bi bi-x me-1"></i>Clear All
+                    <div id="locationOffMsg" style="display:none;font-size:0.72rem;color:var(--color-text-muted);">
+                        <i class="bi bi-geo-alt-fill me-1"></i>Enable location for distance filter
+                    </div>
+
+                    <!-- Clear -->
+                    <a th:href="@{/(q=${param.q},sort=${param.sort})}" class="btn btn-sm ms-auto"
+                       style="font-size:0.72rem;color:var(--color-text-muted);border:1px solid var(--color-border-subtle);">
+                        <i class="bi bi-x me-1"></i>Clear
                     </a>
                 </div>
-            </div>
 
-            <!-- Active filter pills -->
-            <div class="d-flex flex-wrap gap-2 mt-2"
-                 th:if="${(param.type != null and !param.type.empty and param.type[0] != '') or (param.state != null and !param.state.empty and param.state[0] != '') or (param.tag != null and !param.tag.empty) or (param.organizer != null and !param.organizer.empty and param.organizer[0] != '')}">
-                <span th:if="${param.type != null and !param.type.empty and param.type[0] != ''}" class="active-filter-chip">
-                    <span th:text="'Type: ' + ${param.type[0]}">Type</span>
-                    <a th:href="@{/(q=${param.q},state=${param.state},tag=${param.tag},organizer=${param.organizer},sort=${param.sort})}">×</a>
-                </span>
-                <span th:if="${param.organizer != null and !param.organizer.empty and param.organizer[0] != ''}" class="active-filter-chip">
-                    <span th:text="'Organizer: ' + ${param.organizer[0]}">Org</span>
-                    <a th:href="@{/(q=${param.q},type=${param.type},state=${param.state},tag=${param.tag},sort=${param.sort})}">×</a>
-                </span>
-                <span th:if="${param.state != null and !param.state.empty and param.state[0] != ''}" class="active-filter-chip">
-                    <span th:text="'State: ' + ${param.state[0]}">State</span>
-                    <a th:href="@{/(q=${param.q},type=${param.type},tag=${param.tag},organizer=${param.organizer},sort=${param.sort})}">×</a>
-                </span>
-                <span th:each="activeTag : ${param.tag}" class="active-filter-chip">
-                    <span th:text="'Tag: ' + ${activeTag}">Tag</span>
-                    <a th:href="@{/(q=${param.q},type=${param.type},state=${param.state},organizer=${param.organizer},sort=${param.sort})}">×</a>
-                </span>
+                <!-- Active searchIn indicator -->
+                <div th:if="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] != ''}"
+                     class="mt-2" style="font-size:0.75rem;color:var(--color-text-muted);">
+                    Showing results from <strong style="color:var(--color-primary-light);"
+                        th:text="${param.searchIn[0] == 'tags' ? 'tags only' :
+                                   (param.searchIn[0] == 'organizer' ? 'organizer names only' :
+                                   (param.searchIn[0] == 'location' ? 'city and state only' : 'event titles only'))}">field</strong>
+                </div>
             </div>
 
         </form>
@@ -377,6 +350,15 @@
         var p = document.getElementById('filterPanel');
         p.style.display = p.style.display === 'none' ? 'block' : 'none';
     };
+
+    // Auto-open filter panel when there's a search query
+    (function() {
+        var q = document.getElementById('searchInput');
+        if (q && q.value.trim().length > 0) {
+            var p = document.getElementById('filterPanel');
+            if (p && p.style.display === 'none') p.style.display = 'block';
+        }
+    })();
 
     document.querySelectorAll('.sort-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {

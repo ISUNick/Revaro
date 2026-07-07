@@ -300,45 +300,36 @@ public class EventService {
      * Uses pg_trgm fuzzy matching when a query is present.
      * Filters (type, state, tag, organizer) narrow results server-side.
      */
+    /**
+     * Main search method.
+     * searchIn: null = search everything, "tags" = tags only, "organizer" = organizer only,
+     *           "location" = city/state only, "title" = title only
+     */
     @Transactional(readOnly = true)
     public Page<Event> findEvents(String query, String state, String type,
-                                   String tag, String organizer, String sort, int page) {
+                                   String tag, String organizer, String searchIn,
+                                   String sort, int page) {
         LocalDateTime now = LocalDateTime.now();
         Pageable pageable = buildPageable(sort, page);
 
-        boolean hasQuery    = query    != null && !query.isBlank();
-        boolean hasType     = type     != null && !type.isBlank();
-        boolean hasState    = state    != null && !state.isBlank();
-        boolean hasTag      = tag      != null && !tag.isBlank();
-        boolean hasOrganizer = organizer != null && !organizer.isBlank();
-        boolean hasFilter   = hasType || hasState || hasTag || hasOrganizer;
+        boolean hasQuery = query != null && !query.isBlank();
 
         Page<Event> events;
 
-        if (hasQuery && hasFilter) {
-            // Fuzzy search with filters
-            events = eventRepository.fuzzySearchEventsFiltered(
-                    query,
-                    hasType ? type : null,
-                    hasState ? state : null,
-                    hasTag ? tag : null,
-                    hasOrganizer ? organizer : null,
-                    pageable);
-        } else if (hasQuery) {
-            // Fuzzy search, no filters
-            events = eventRepository.fuzzySearchEvents(query, pageable);
-        } else if (hasFilter) {
-            // No query, just filters on upcoming events
-            events = eventRepository.findUpcomingFiltered(
-                    now,
-                    hasType ? type : null,
-                    hasState ? state : null,
-                    hasTag ? tag : null,
-                    hasOrganizer ? organizer : null,
-                    pageable);
-        } else {
-            // Default: upcoming events sorted by date
+        if (!hasQuery) {
+            // No query — show upcoming events (default feed)
             events = eventRepository.findUpcomingEvents(now, pageable);
+        } else if ("tags".equals(searchIn)) {
+            events = eventRepository.searchByTagOnly(query, pageable);
+        } else if ("organizer".equals(searchIn)) {
+            events = eventRepository.searchByOrganizerOnly(query, pageable);
+        } else if ("location".equals(searchIn)) {
+            events = eventRepository.searchByLocationOnly(query, pageable);
+        } else if ("title".equals(searchIn)) {
+            events = eventRepository.searchByTitleOnly(query, pageable);
+        } else {
+            // Default: search everything with fuzzy matching
+            events = eventRepository.fuzzySearchEvents(query, pageable);
         }
 
         return events.map(this::hydrateEvent);

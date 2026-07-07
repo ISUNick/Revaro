@@ -36,23 +36,16 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             LEFT JOIN event_tags et ON et.event_id = e.id
             LEFT JOIN tags t ON t.id = et.tag_id
             WHERE (
-                e.title         % :q
+                e.title % :q
                 OR e.organizer_name % :q
-                OR e.city       % :q
-                OR e.state      % :q
-                OR t.name       % :q
-                OR e.title       ILIKE '%' || :q || '%'
+                OR e.city % :q
+                OR e.state % :q
+                OR t.name % :q
+                OR e.title ILIKE '%' || :q || '%'
                 OR e.organizer_name ILIKE '%' || :q || '%'
-                OR e.city        ILIKE '%' || :q || '%'
-                OR t.name        ILIKE '%' || :q || '%'
+                OR e.city ILIKE '%' || :q || '%'
+                OR t.name ILIKE '%' || :q || '%'
             )
-            ORDER BY
-                GREATEST(
-                    similarity(e.title, :q),
-                    similarity(COALESCE(e.organizer_name,''), :q),
-                    similarity(COALESCE(e.city,''), :q)
-                ) DESC,
-                e.event_date_time ASC
             """,
             countQuery = """
             SELECT COUNT(DISTINCT e.id) FROM events e
@@ -88,7 +81,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
             AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
             AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
-            ORDER BY e.event_date_time ASC
             """,
             countQuery = """
             SELECT COUNT(DISTINCT e.id) FROM events e
@@ -126,7 +118,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
             AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
             AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
-            ORDER BY e.event_date_time ASC
             """,
             countQuery = """
             SELECT COUNT(DISTINCT e.id) FROM events e
@@ -145,6 +136,62 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                       @Param("tag") String tag,
                                       @Param("organizer") String organizer,
                                       Pageable pageable);
+
+    // ── Targeted field searches (for filter chips) ───────────────────────────
+
+    // Search only in tag names
+    @Query(value = """
+            SELECT DISTINCT e.* FROM events e
+            JOIN event_tags et ON et.event_id = e.id
+            JOIN tags t ON t.id = et.tag_id
+            WHERE (t.name % :q OR t.name ILIKE '%' || :q || '%')
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT e.id) FROM events e
+            JOIN event_tags et ON et.event_id = e.id
+            JOIN tags t ON t.id = et.tag_id
+            WHERE (t.name % :q OR t.name ILIKE '%' || :q || '%')
+            """,
+            nativeQuery = true)
+    Page<Event> searchByTagOnly(@Param("q") String query, Pageable pageable);
+
+    // Search only organizer name
+    @Query(value = """
+            SELECT e.* FROM events e
+            WHERE (e.organizer_name % :q OR e.organizer_name ILIKE '%' || :q || '%')
+            """,
+            countQuery = """
+            SELECT COUNT(e.id) FROM events e
+            WHERE (e.organizer_name % :q OR e.organizer_name ILIKE '%' || :q || '%')
+            """,
+            nativeQuery = true)
+    Page<Event> searchByOrganizerOnly(@Param("q") String query, Pageable pageable);
+
+    // Search only city/state
+    @Query(value = """
+            SELECT e.* FROM events e
+            WHERE (e.city % :q OR e.city ILIKE '%' || :q || '%'
+                OR e.state % :q OR e.state ILIKE '%' || :q || '%')
+            """,
+            countQuery = """
+            SELECT COUNT(e.id) FROM events e
+            WHERE (e.city % :q OR e.city ILIKE '%' || :q || '%'
+                OR e.state % :q OR e.state ILIKE '%' || :q || '%')
+            """,
+            nativeQuery = true)
+    Page<Event> searchByLocationOnly(@Param("q") String query, Pageable pageable);
+
+    // Search only event title
+    @Query(value = """
+            SELECT e.* FROM events e
+            WHERE (e.title % :q OR e.title ILIKE '%' || :q || '%')
+            """,
+            countQuery = """
+            SELECT COUNT(e.id) FROM events e
+            WHERE (e.title % :q OR e.title ILIKE '%' || :q || '%')
+            """,
+            nativeQuery = true)
+    Page<Event> searchByTitleOnly(@Param("q") String query, Pageable pageable);
 
     // ── Admin / profile ───────────────────────────────────────────────────────
 

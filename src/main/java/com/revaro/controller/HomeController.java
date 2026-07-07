@@ -39,12 +39,13 @@ public class HomeController {
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String tag,
             @RequestParam(required = false) String organizer,
+            @RequestParam(required = false) String searchIn,
             @RequestParam(required = false, defaultValue = "relevance") String sort,
             @RequestParam(required = false, defaultValue = "0") int page,
             Model model) {
 
         model.addAttribute("events",
-                eventService.findEvents(q, state, type, tag, organizer, sort, page));
+                eventService.findEvents(q, state, type, tag, organizer, searchIn, sort, page));
         model.addAttribute("allTags",
                 tagRepository.findAllByOrderByCategoryAscNameAsc());
         model.addAttribute("currentPage", "home");
