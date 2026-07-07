@@ -6,7 +6,6 @@ import com.revaro.entity.Report;
 import com.revaro.entity.Tag;
 import com.revaro.entity.User;
 import com.revaro.enums.EventStatus;
-import com.revaro.enums.EventType;
 import com.revaro.enums.ReportStatus;
 import com.revaro.enums.ReportType;
 import com.revaro.enums.RsvpStatus;
@@ -38,7 +37,7 @@ import java.util.Set;
 @Transactional
 public class EventService {
 
-    private static final int PAGE_SIZE = 10;
+    private static final int PAGE_SIZE = 12;
 
     private final EventRepository eventRepository;
     private final RsvpRepository rsvpRepository;
@@ -70,25 +69,22 @@ public class EventService {
         boolean flagged = profanityFilter.containsProfanity(dto.getTitle())
                        || profanityFilter.containsProfanity(dto.getDescription());
 
-        // Upload image once — shared across all recurring instances
         String imageUrl = null;
         if (dto.getImageFile() != null && !dto.getImageFile().isEmpty()) {
             imageUrl = fileUploadUtil.saveImage(dto.getImageFile());
         }
 
-        // Geocode once
         double[] coords = null;
         if (dto.getCity() != null && !dto.getCity().isBlank()) {
             coords = geocodingUtil.geocode(dto.getCity(), dto.getState());
         }
 
-        // Resolve tags once
         Set<Tag> tags = new HashSet<>();
         if (dto.getTagIds() != null && !dto.getTagIds().isEmpty()) {
             tags = new HashSet<>(tagRepository.findAllById(dto.getTagIds()));
         }
 
-        // Build list of dates — either recurring or specific hand-picked dates
+        // Handle specific dates (calendar picker)
         List<LocalDateTime> dates;
         if (dto.getSpecificDates() != null && !dto.getSpecificDates().isEmpty()) {
             dates = buildSpecificDates(dto);
@@ -129,13 +125,27 @@ public class EventService {
         return firstSaved;
     }
 
+    private List<LocalDateTime> buildSpecificDates(EventDto dto) {
+        List<LocalDateTime> dates = new ArrayList<>();
+        java.time.LocalTime time = dto.getEventDateTime() != null
+                ? dto.getEventDateTime().toLocalTime()
+                : java.time.LocalTime.of(9, 0);
+        for (String dateStr : dto.getSpecificDates()) {
+            try {
+                dates.add(LocalDate.parse(dateStr).atTime(time));
+            } catch (Exception ignored) {}
+        }
+        dates.sort(java.util.Comparator.naturalOrder());
+        return dates.isEmpty() ? List.of(dto.getEventDateTime()) : dates;
+    }
+
     private List<LocalDateTime> buildRecurringDates(EventDto dto) {
         List<LocalDateTime> dates = new ArrayList<>();
-        dates.add(dto.getEventDateTime());
+        if (dto.getEventDateTime() != null) dates.add(dto.getEventDateTime());
 
         if (!dto.isRecurring()
                 || dto.getRecurringEndDate() == null
-                || dto.getRecurringFrequency() == null) {
+                || dto.getEventDateTime() == null) {
             return dates;
         }
 
@@ -164,34 +174,10 @@ public class EventService {
         return dates;
     }
 
-    /**
-     * Builds a list of specific hand-picked dates from the DTO.
-     */
-    private List<LocalDateTime> buildSpecificDates(EventDto dto) {
-        List<LocalDateTime> dates = new ArrayList<>();
-        java.time.LocalTime time = dto.getEventDateTime() != null
-                ? dto.getEventDateTime().toLocalTime()
-                : java.time.LocalTime.of(9, 0);
-
-        for (String dateStr : dto.getSpecificDates()) {
-            try {
-                LocalDate date = LocalDate.parse(dateStr);
-                dates.add(date.atTime(time));
-            } catch (Exception ignored) {}
-        }
-        dates.sort(java.util.Comparator.naturalOrder());
-        return dates;
-    }
-
-    /**
-     * Create recurring future events based on an edited event.
-     * Skips the first date (the event being edited) and creates all subsequent ones.
-     */
     public void createRecurringFromEdit(Long originalEventId, EventDto dto, User creator) throws IOException {
         Event original = eventRepository.findById(originalEventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found."));
 
-        // Always use the saved event's datetime as start — don't trust the form binding
         if (dto.getEventDateTime() == null) {
             dto.setEventDateTime(original.getEventDateTime());
         }
@@ -202,24 +188,22 @@ public class EventService {
         } else {
             dates = buildRecurringDates(dto);
         }
-        if (dates.size() <= 1) return; // No additional dates
+        if (dates.size() <= 1) return;
 
-        Set<Tag> tags = original.getTags() != null ? original.getTags() : new java.util.HashSet<>();
+        Set<Tag> tags = original.getTags() != null ? new HashSet<>(original.getTags()) : new HashSet<>();
         String imageUrl = original.getFeaturedImage();
         double[] coords = original.getLatitude() != null
                 ? new double[]{original.getLatitude(), original.getLongitude()} : null;
 
-        // Mark the original as a series too
         original.setRecurring(true);
         eventRepository.save(original);
 
-        // Create all dates except the first (which is the original event)
         for (int i = 1; i < dates.size(); i++) {
             Event event = new Event();
             applyDtoToEvent(event, dto, tags, coords);
             event.setEventDateTime(dates.get(i));
             event.setCreator(creator);
-            event.setStatus(com.revaro.enums.EventStatus.ACTIVE);
+            event.setStatus(EventStatus.ACTIVE);
             event.setFeaturedImage(imageUrl);
             event.setRecurring(true);
             if (dto.isPostedByOrganizer()) {
@@ -297,12 +281,6 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    public List<Event> hydrateEvents(List<Event> events) {
-        events.forEach(this::hydrateEvent);
-        return events;
-    }
-
-    @Transactional(readOnly = true)
     public List<Event> findByCreatorHydrated(User user) {
         List<Event> events = eventRepository.findByCreatorOrderByCreatedAtDesc(user);
         events.forEach(this::hydrateEvent);
@@ -317,39 +295,49 @@ public class EventService {
         return event;
     }
 
+    /**
+     * Main search + filter method used by the homepage.
+     * Uses pg_trgm fuzzy matching when a query is present.
+     * Filters (type, state, tag, organizer) narrow results server-side.
+     */
     @Transactional(readOnly = true)
-    public Page<Event> findEvents(String query, String state, String type, String tag, String sort, int page) {
+    public Page<Event> findEvents(String query, String state, String type,
+                                   String tag, String organizer, String sort, int page) {
         LocalDateTime now = LocalDateTime.now();
         Pageable pageable = buildPageable(sort, page);
 
-        boolean hasQuery = query != null && !query.isBlank();
-        boolean hasType  = type  != null && !type.isBlank();
-        boolean hasState = state != null && !state.isBlank();
-        boolean hasTag   = tag   != null && !tag.isBlank();
+        boolean hasQuery    = query    != null && !query.isBlank();
+        boolean hasType     = type     != null && !type.isBlank();
+        boolean hasState    = state    != null && !state.isBlank();
+        boolean hasTag      = tag      != null && !tag.isBlank();
+        boolean hasOrganizer = organizer != null && !organizer.isBlank();
+        boolean hasFilter   = hasType || hasState || hasTag || hasOrganizer;
 
         Page<Event> events;
 
-        if (hasTag && hasQuery) {
-            events = eventRepository.searchEventsWithTag(query, tag, pageable);
-        } else if (hasTag) {
-            events = eventRepository.findByTagName(tag, now, pageable);
-        } else if (hasType) {
-            EventType eventType;
-            try {
-                eventType = EventType.valueOf(type);
-            } catch (IllegalArgumentException e) {
-                return eventRepository.findUpcomingEvents(now, pageable).map(this::hydrateEvent);
-            }
-            if (hasQuery) {
-                events = eventRepository.searchEventsByType(query, eventType, now, pageable);
-            } else {
-                events = eventRepository.findByEventType(eventType, now, pageable);
-            }
-        } else if (hasState && !hasQuery) {
-            events = eventRepository.findByState(state, now, pageable);
+        if (hasQuery && hasFilter) {
+            // Fuzzy search with filters
+            events = eventRepository.fuzzySearchEventsFiltered(
+                    query,
+                    hasType ? type : null,
+                    hasState ? state : null,
+                    hasTag ? tag : null,
+                    hasOrganizer ? organizer : null,
+                    pageable);
         } else if (hasQuery) {
-            events = eventRepository.searchEvents(query, pageable);
+            // Fuzzy search, no filters
+            events = eventRepository.fuzzySearchEvents(query, pageable);
+        } else if (hasFilter) {
+            // No query, just filters on upcoming events
+            events = eventRepository.findUpcomingFiltered(
+                    now,
+                    hasType ? type : null,
+                    hasState ? state : null,
+                    hasTag ? tag : null,
+                    hasOrganizer ? organizer : null,
+                    pageable);
         } else {
+            // Default: upcoming events sorted by date
             events = eventRepository.findUpcomingEvents(now, pageable);
         }
 

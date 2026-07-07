@@ -21,21 +21,152 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findByCreatorOrderByCreatedAtDesc(User creator);
     Page<Event> findByStatus(EventStatus status, Pageable pageable);
 
+    // ── Default feed ──────────────────────────────────────────────────────────
+
     @Query("SELECT e FROM Event e WHERE e.eventDateTime >= :now")
     Page<Event> findUpcomingEvents(@Param("now") LocalDateTime now, Pageable pageable);
 
-    @Query("""
-            SELECT DISTINCT e FROM Event e
-            LEFT JOIN e.tags t
+    // ── Fuzzy full-text search using pg_trgm ──────────────────────────────────
+    // Searches title, organizer, city, state, tags using trigram similarity
+    // so typos and punctuation differences still return results.
+    // Threshold: similarity > 0.1 (loose enough to catch most typos)
+
+    @Query(value = """
+            SELECT DISTINCT e.* FROM events e
+            LEFT JOIN event_tags et ON et.event_id = e.id
+            LEFT JOIN tags t ON t.id = et.tag_id
             WHERE (
-                LOWER(e.title) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.organizerName,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.city,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.state,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(t.name,'')) LIKE LOWER(CONCAT('%', :q, '%'))
+                e.title         % :q
+                OR e.organizer_name % :q
+                OR e.city       % :q
+                OR e.state      % :q
+                OR t.name       % :q
+                OR e.title       ILIKE '%' || :q || '%'
+                OR e.organizer_name ILIKE '%' || :q || '%'
+                OR e.city        ILIKE '%' || :q || '%'
+                OR t.name        ILIKE '%' || :q || '%'
             )
-            """)
-    Page<Event> searchEvents(@Param("q") String query, Pageable pageable);
+            ORDER BY
+                GREATEST(
+                    similarity(e.title, :q),
+                    similarity(COALESCE(e.organizer_name,''), :q),
+                    similarity(COALESCE(e.city,''), :q)
+                ) DESC,
+                e.event_date_time ASC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT e.id) FROM events e
+            LEFT JOIN event_tags et ON et.event_id = e.id
+            LEFT JOIN tags t ON t.id = et.tag_id
+            WHERE (
+                e.title % :q OR e.organizer_name % :q OR e.city % :q
+                OR e.state % :q OR t.name % :q
+                OR e.title ILIKE '%' || :q || '%'
+                OR e.organizer_name ILIKE '%' || :q || '%'
+                OR e.city ILIKE '%' || :q || '%'
+                OR t.name ILIKE '%' || :q || '%'
+            )
+            """,
+            nativeQuery = true)
+    Page<Event> fuzzySearchEvents(@Param("q") String query, Pageable pageable);
+
+    // ── Fuzzy search WITH filters ─────────────────────────────────────────────
+
+    @Query(value = """
+            SELECT DISTINCT e.* FROM events e
+            LEFT JOIN event_tags et ON et.event_id = e.id
+            LEFT JOIN tags t ON t.id = et.tag_id
+            WHERE (
+                e.title % :q OR e.organizer_name % :q OR e.city % :q
+                OR e.state % :q OR t.name % :q
+                OR e.title ILIKE '%' || :q || '%'
+                OR e.organizer_name ILIKE '%' || :q || '%'
+                OR e.city ILIKE '%' || :q || '%'
+                OR t.name ILIKE '%' || :q || '%'
+            )
+            AND (:type IS NULL OR e.event_type = :type)
+            AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
+            AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
+            AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
+            ORDER BY e.event_date_time ASC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT e.id) FROM events e
+            LEFT JOIN event_tags et ON et.event_id = e.id
+            LEFT JOIN tags t ON t.id = et.tag_id
+            WHERE (
+                e.title % :q OR e.organizer_name % :q OR e.city % :q
+                OR e.state % :q OR t.name % :q
+                OR e.title ILIKE '%' || :q || '%'
+                OR e.organizer_name ILIKE '%' || :q || '%'
+                OR e.city ILIKE '%' || :q || '%'
+                OR t.name ILIKE '%' || :q || '%'
+            )
+            AND (:type IS NULL OR e.event_type = :type)
+            AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
+            AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
+            AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
+            """,
+            nativeQuery = true)
+    Page<Event> fuzzySearchEventsFiltered(@Param("q") String query,
+                                           @Param("type") String type,
+                                           @Param("state") String state,
+                                           @Param("tag") String tag,
+                                           @Param("organizer") String organizer,
+                                           Pageable pageable);
+
+    // ── Filtered feed (no search query) ──────────────────────────────────────
+
+    @Query(value = """
+            SELECT DISTINCT e.* FROM events e
+            LEFT JOIN event_tags et ON et.event_id = e.id
+            LEFT JOIN tags t ON t.id = et.tag_id
+            WHERE e.event_date_time >= :now
+            AND (:type IS NULL OR e.event_type = :type)
+            AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
+            AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
+            AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
+            ORDER BY e.event_date_time ASC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT e.id) FROM events e
+            LEFT JOIN event_tags et ON et.event_id = e.id
+            LEFT JOIN tags t ON t.id = et.tag_id
+            WHERE e.event_date_time >= :now
+            AND (:type IS NULL OR e.event_type = :type)
+            AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
+            AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
+            AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
+            """,
+            nativeQuery = true)
+    Page<Event> findUpcomingFiltered(@Param("now") LocalDateTime now,
+                                      @Param("type") String type,
+                                      @Param("state") String state,
+                                      @Param("tag") String tag,
+                                      @Param("organizer") String organizer,
+                                      Pageable pageable);
+
+    // ── Admin / profile ───────────────────────────────────────────────────────
+
+    Page<Event> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    long countByStatus(EventStatus status);
+    long countByCreator(User creator);
+
+    @Query("SELECT e FROM Event e WHERE e.status = :status AND e.eventDateTime >= :now ORDER BY e.eventDateTime ASC")
+    Page<Event> findUpcomingByStatus(@Param("status") EventStatus status,
+                                     @Param("now") LocalDateTime now,
+                                     Pageable pageable);
+
+    // Keep old JPQL methods for backwards compatibility with admin/profile pages
+    @Query("SELECT e FROM Event e WHERE e.eventType = :type AND e.eventDateTime >= :now")
+    Page<Event> findByEventType(@Param("type") EventType type,
+                                @Param("now") LocalDateTime now,
+                                Pageable pageable);
+
+    @Query("SELECT e FROM Event e WHERE LOWER(COALESCE(e.state,'')) = LOWER(:state) AND e.eventDateTime >= :now")
+    Page<Event> findByState(@Param("state") String state,
+                            @Param("now") LocalDateTime now,
+                            Pageable pageable);
 
     @Query("""
             SELECT DISTINCT e FROM Event e
@@ -46,54 +177,4 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     Page<Event> findByTagName(@Param("tagName") String tagName,
                               @Param("now") LocalDateTime now,
                               Pageable pageable);
-
-    @Query("""
-            SELECT DISTINCT e FROM Event e
-            JOIN e.tags t
-            WHERE LOWER(t.name) = LOWER(:tagName)
-            AND (
-                LOWER(e.title) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.organizerName,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.city,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.state,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-            )
-            """)
-    Page<Event> searchEventsWithTag(@Param("q") String query,
-                                    @Param("tagName") String tagName,
-                                    Pageable pageable);
-
-    @Query("SELECT e FROM Event e WHERE e.eventType = :type AND e.eventDateTime >= :now")
-    Page<Event> findByEventType(@Param("type") EventType type,
-                                @Param("now") LocalDateTime now,
-                                Pageable pageable);
-
-    @Query("""
-            SELECT e FROM Event e
-            WHERE e.eventType = :type
-            AND e.eventDateTime >= :now
-            AND (
-                LOWER(e.title) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.organizerName,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.city,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(COALESCE(e.state,'')) LIKE LOWER(CONCAT('%', :q, '%'))
-            )
-            """)
-    Page<Event> searchEventsByType(@Param("q") String query,
-                                   @Param("type") EventType type,
-                                   @Param("now") LocalDateTime now,
-                                   Pageable pageable);
-
-    @Query("SELECT e FROM Event e WHERE LOWER(COALESCE(e.state,'')) = LOWER(:state) AND e.eventDateTime >= :now")
-    Page<Event> findByState(@Param("state") String state,
-                            @Param("now") LocalDateTime now,
-                            Pageable pageable);
-
-    Page<Event> findAllByOrderByCreatedAtDesc(Pageable pageable);
-    long countByStatus(EventStatus status);
-    long countByCreator(User creator);
-
-    @Query("SELECT e FROM Event e WHERE e.status = :status AND e.eventDateTime >= :now ORDER BY e.eventDateTime ASC")
-    Page<Event> findUpcomingByStatus(@Param("status") EventStatus status,
-                                     @Param("now") LocalDateTime now,
-                                     Pageable pageable);
 }
