@@ -320,16 +320,16 @@ public class EventService {
             // No query — show upcoming events (default feed)
             events = eventRepository.findUpcomingEvents(now, pageable);
         } else if ("tags".equals(searchIn)) {
-            events = eventRepository.searchByTagOnly(query, pageable);
+            events = eventRepository.searchByTagOnly(query, buildNativePageable(page));
         } else if ("organizer".equals(searchIn)) {
-            events = eventRepository.searchByOrganizerOnly(query, pageable);
+            events = eventRepository.searchByOrganizerOnly(query, buildNativePageable(page));
         } else if ("location".equals(searchIn)) {
-            events = eventRepository.searchByLocationOnly(query, pageable);
+            events = eventRepository.searchByLocationOnly(query, buildNativePageable(page));
         } else if ("title".equals(searchIn)) {
-            events = eventRepository.searchByTitleOnly(query, pageable);
+            events = eventRepository.searchByTitleOnly(query, buildNativePageable(page));
         } else {
             // Default: search everything with fuzzy matching
-            events = eventRepository.fuzzySearchEvents(query, pageable);
+            events = eventRepository.fuzzySearchEvents(query, buildNativePageable(page));
         }
 
         return events.map(this::hydrateEvent);
@@ -364,6 +364,12 @@ public class EventService {
             default       -> Sort.by("eventDateTime").ascending();
         };
         return PageRequest.of(Math.max(0, page), PAGE_SIZE, sortOrder);
+    }
+
+    // Native queries can't use JPA field names — use unsorted pageable
+    // and rely on the query's own ordering or default DB ordering
+    private Pageable buildNativePageable(int page) {
+        return PageRequest.of(Math.max(0, page), PAGE_SIZE);
     }
 
     public EventDto toDto(Event event) {

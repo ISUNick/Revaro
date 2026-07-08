@@ -156,6 +156,17 @@
                         </span>
                     </label>
 
+                    <!-- Accounts only -->
+                    <label class="filter-chip-label">
+                        <input type="radio" name="searchIn" value="accounts" style="display:none;"
+                               th:checked="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'accounts'}"
+                               onchange="this.form.submit()"/>
+                        <span class="filter-chip"
+                              th:classappend="${param.searchIn != null and !param.searchIn.empty and param.searchIn[0] == 'accounts'} ? ' active' : ''">
+                            <i class="bi bi-person me-1"></i>Accounts
+                        </span>
+                    </label>
+
                     <span style="width:1px;height:20px;background:var(--color-border);margin:0 0.25rem;"></span>
 
                     <!-- Distance slider inline -->
@@ -185,7 +196,8 @@
                     Showing results from <strong style="color:var(--color-primary-light);"
                         th:text="${param.searchIn[0] == 'tags' ? 'tags only' :
                                    (param.searchIn[0] == 'organizer' ? 'organizer names only' :
-                                   (param.searchIn[0] == 'location' ? 'city and state only' : 'event titles only'))}">field</strong>
+                                   (param.searchIn[0] == 'location' ? 'city and state only' :
+                                   (param.searchIn[0] == 'accounts' ? 'accounts only' : 'event titles only')))}">field</strong>
                 </div>
             </div>
 

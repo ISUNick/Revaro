@@ -50,11 +50,11 @@ public class HomeController {
                 tagRepository.findAllByOrderByCategoryAscNameAsc());
         model.addAttribute("currentPage", "home");
 
-        // Show user cards only when query closely matches a username
+        // Show user cards when query matches username OR when accounts filter is selected
         if (q != null && q.length() >= 2) {
             List<User> matchedUsers = userRepository
                     .findByUsernameContainingIgnoreCase(q)
-                    .stream().limit(3).toList();
+                    .stream().limit("accounts".equals(searchIn) ? 12 : 3).toList();
 
             if (!matchedUsers.isEmpty()) {
                 model.addAttribute("searchUsers", matchedUsers);
@@ -64,6 +64,11 @@ public class HomeController {
                 }
                 model.addAttribute("userRevPoints", userRevPoints);
             }
+        }
+
+        // When accounts filter is selected, don't show events
+        if ("accounts".equals(searchIn)) {
+            model.addAttribute("events", null);
         }
 
         return "index";
