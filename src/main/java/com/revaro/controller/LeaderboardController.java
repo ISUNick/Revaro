@@ -61,9 +61,10 @@ public class LeaderboardController {
         Long currentUserPoints = null;
         if (principal != null) {
             User currentUser = principal.getUser();
-            currentUserPoints = userService.calculateRevPoints(currentUser);
+            final long pts = userService.calculateRevPoints(currentUser);
+            currentUserPoints = pts;
             long rank = allUsers.stream()
-                    .filter(u -> pointsMap.getOrDefault(u.getId(), 0L) > currentUserPoints)
+                    .filter(u -> pointsMap.getOrDefault(u.getId(), 0L) > pts)
                     .count() + 1;
             currentUserRank = rank;
         }

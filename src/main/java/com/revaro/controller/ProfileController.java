@@ -1,8 +1,9 @@
 package com.revaro.controller;
 
-import java.util.List;
 import com.revaro.entity.User;
 import com.revaro.repository.EventRepository;
+import com.revaro.repository.UserRepository;
+import java.util.List;
 import com.revaro.security.UserDetailsImpl;
 import com.revaro.service.EventService;
 import com.revaro.service.UserService;
@@ -20,11 +21,13 @@ public class ProfileController {
     private final UserService userService;
     private final EventRepository eventRepository;
     private final EventService eventService;
+    private final UserRepository userRepository;
 
-    public ProfileController(UserService userService, EventRepository eventRepository, EventService eventService) {
+    public ProfileController(UserService userService, EventRepository eventRepository, EventService eventService, UserRepository userRepository) {
         this.userService = userService;
         this.eventRepository = eventRepository;
         this.eventService = eventService;
+        this.userRepository = userRepository;
     }
 
     // ── Public profile ────────────────────────────────────────────────────────
@@ -40,9 +43,10 @@ public class ProfileController {
 
         // Calculate rank among all users
         try {
-            List<com.revaro.entity.User> allUsers = userRepository.findAll();
+            List<User> allUsers = userRepository.findAll();
+            final long pts = revPoints;
             long rank = allUsers.stream()
-                    .filter(u -> userService.calculateRevPoints(u) > revPoints)
+                    .filter(u -> userService.calculateRevPoints(u) > pts)
                     .count() + 1;
             model.addAttribute("userRank", rank);
         } catch (Exception e) {
