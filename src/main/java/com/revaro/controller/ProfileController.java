@@ -1,5 +1,6 @@
 package com.revaro.controller;
 
+import java.util.List;
 import com.revaro.entity.User;
 import com.revaro.repository.EventRepository;
 import com.revaro.security.UserDetailsImpl;
@@ -34,26 +35,22 @@ public class ProfileController {
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
 
         model.addAttribute("profileUser", user);
-        model.addAttribute("revPoints", userService.calculateRevPoints(user));
+        long revPoints = userService.calculateRevPoints(user);
+        model.addAttribute("revPoints", revPoints);
+
+        // Calculate rank among all users
+        try {
+            List<com.revaro.entity.User> allUsers = userRepository.findAll();
+            long rank = allUsers.stream()
+                    .filter(u -> userService.calculateRevPoints(u) > revPoints)
+                    .count() + 1;
+            model.addAttribute("userRank", rank);
+        } catch (Exception e) {
+            model.addAttribute("userRank", null);
+        }
         model.addAttribute("eventCount", userService.countEventsForUser(user));
         model.addAttribute("profileEvents", eventService.findByCreatorHydrated(user));
         return "user/profile";
-    }
-
-    // ── Mention hover preview API ──────────────────────────────────────────────
-    @GetMapping("/api/users/{username}/preview")
-    @org.springframework.web.bind.annotation.ResponseBody
-    public java.util.Map<String, Object> userPreview(@PathVariable String username) {
-        User user = userService.findByUsername(username).orElse(null);
-        if (user == null) return java.util.Map.of("error", "not found");
-        return java.util.Map.of(
-            "username", user.getUsername(),
-            "avatar", user.getProfileImage() != null ? user.getProfileImage() : "",
-            "revPoints", userService.calculateRevPoints(user),
-            "joined", user.getCreatedAt() != null
-                ? user.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy"))
-                : "Unknown"
-        );
     }
 
     // ── Own profile (redirect to username route) ──────────────────────────────

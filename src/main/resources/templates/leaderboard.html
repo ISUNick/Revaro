@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Leaderboard – Revaro</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" th:href="@{/css/revaro.css}"/>
+    <style>
+        .lb-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+        .lb-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--color-border-subtle);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--color-text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--color-border-subtle);
+            transition: background 0.1s;
+            text-decoration: none;
+            color: inherit;
+        }
+        .lb-row:last-child { border-bottom: none; }
+        .lb-row:hover { background: var(--color-surface-raised); }
+        .lb-rank {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--color-text-muted);
+            min-width: 24px;
+            text-align: center;
+        }
+        .lb-rank.gold   { color: #f59e0b; }
+        .lb-rank.silver { color: #94a3b8; }
+        .lb-rank.bronze { color: #b45309; }
+        .lb-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #fff;
+        }
+        .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .lb-username {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--color-text);
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .lb-points {
+            font-weight: 700;
+            font-size: 0.875rem;
+            color: var(--color-primary-light);
+            white-space: nowrap;
+        }
+        .lb-points span {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-left: 0.2rem;
+        }
+        .your-rank-banner {
+            background: rgba(42,111,234,0.08);
+            border: 1px solid rgba(42,111,234,0.2);
+            border-radius: var(--radius-md);
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<section class="page-hero">
+    <div class="container-xl">
+        <h1 class="mb-1">🏆 Leaderboard</h1>
+        <p class="lead mb-0">The most active members of the Revaro community.</p>
+    </div>
+</section>
+
+<div class="container-xl mt-4 mb-5">
+
+    <!-- Your rank banner (logged in only) -->
+    <div th:if="${currentUserRank != null}" class="your-rank-banner">
+        <i class="bi bi-person-circle" style="font-size:1.5rem;color:var(--color-primary-light);"></i>
+        <div>
+            <div style="font-weight:700;font-size:0.9rem;color:var(--color-text);">
+                You are ranked <span style="color:var(--color-primary-light);" th:text="'#' + ${currentUserRank}">--</span>
+            </div>
+            <div style="font-size:0.78rem;color:var(--color-text-muted);">
+                <span th:text="${currentUserPoints}">0</span> Rev Points total
+            </div>
+        </div>
+        <a th:href="@{/profile}" style="margin-left:auto;font-size:0.8rem;color:var(--color-primary-light);font-weight:600;white-space:nowrap;">
+            View Profile →
+        </a>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- All-time leaderboard -->
+        <div class="col-12 col-lg-6">
+            <div class="lb-card">
+                <div class="lb-header">
+                    <i class="bi bi-trophy-fill" style="color:#f59e0b;"></i>
+                    All-Time Top 10
+                </div>
+                <div th:if="${allTime.empty}" style="padding:2rem;text-align:center;color:var(--color-text-muted);font-size:0.875rem;">
+                    No activity yet — be the first!
+                </div>
+                <a th:each="user, iter : ${allTime}"
+                   th:href="@{/profile/{u}(u=${user.username})}"
+                   class="lb-row">
+                    <div class="lb-rank"
+                         th:classappend="${iter.index == 0} ? ' gold' : (${iter.index == 1} ? ' silver' : (${iter.index == 2} ? ' bronze' : ''))"
+                         th:text="${iter.index == 0} ? '🥇' : (${iter.index == 1} ? '🥈' : (${iter.index == 2} ? '🥉' : '#' + (iter.index + 1)))">#1</div>
+                    <div class="lb-avatar">
+                        <img th:if="${user.profileImage != null and !#strings.isEmpty(user.profileImage)}"
+                             th:src="${user.profileImage}" th:alt="${user.username}"/>
+                        <span th:unless="${user.profileImage != null and !#strings.isEmpty(user.profileImage)}"
+                              th:text="${user.username.substring(0,1).toUpperCase()}">U</span>
+                    </div>
+                    <div class="lb-username" th:text="${user.username}">Username</div>
+                    <div class="lb-points">
+                        <span th:text="${pointsMap[user.id]}">0</span>
+                        <span>pts</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Right column: This week + Top Organizers -->
+        <div class="col-12 col-lg-6 d-flex flex-column gap-4">
+
+            <!-- Top this week -->
+            <div class="lb-card">
+                <div class="lb-header">
+                    <i class="bi bi-fire" style="color:#ef4444;"></i>
+                    Top This Week
+                    <span style="font-size:0.65rem;font-weight:400;color:var(--color-text-muted);margin-left:auto;text-transform:none;letter-spacing:0;">
+                        Weekly tracking coming soon
+                    </span>
+                </div>
+                <div th:if="${thisWeek.empty}" style="padding:2rem;text-align:center;color:var(--color-text-muted);font-size:0.875rem;">
+                    No activity yet.
+                </div>
+                <a th:each="user, iter : ${thisWeek}"
+                   th:href="@{/profile/{u}(u=${user.username})}"
+                   class="lb-row">
+                    <div class="lb-rank"
+                         th:classappend="${iter.index == 0} ? ' gold' : (${iter.index == 1} ? ' silver' : (${iter.index == 2} ? ' bronze' : ''))"
+                         th:text="${iter.index == 0} ? '🥇' : (${iter.index == 1} ? '🥈' : (${iter.index == 2} ? '🥉' : '#' + (iter.index + 1)))">#1</div>
+                    <div class="lb-avatar">
+                        <img th:if="${user.profileImage != null and !#strings.isEmpty(user.profileImage)}"
+                             th:src="${user.profileImage}" th:alt="${user.username}"/>
+                        <span th:unless="${user.profileImage != null and !#strings.isEmpty(user.profileImage)}"
+                              th:text="${user.username.substring(0,1).toUpperCase()}">U</span>
+                    </div>
+                    <div class="lb-username" th:text="${user.username}">Username</div>
+                    <div class="lb-points">
+                        <span th:text="${pointsMap[user.id]}">0</span>
+                        <span>pts</span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Top Organizers -->
+            <div class="lb-card">
+                <div class="lb-header">
+                    <i class="bi bi-calendar-event-fill" style="color:var(--color-primary-light);"></i>
+                    Top Organizers
+                    <span style="font-size:0.65rem;font-weight:400;color:var(--color-text-muted);margin-left:auto;text-transform:none;letter-spacing:0;">
+                        by events posted
+                    </span>
+                </div>
+                <div th:if="${topOrganizers.empty}" style="padding:2rem;text-align:center;color:var(--color-text-muted);font-size:0.875rem;">
+                    No events posted yet.
+                </div>
+                <a th:each="user, iter : ${topOrganizers}"
+                   th:href="@{/profile/{u}(u=${user.username})}"
+                   class="lb-row">
+                    <div class="lb-rank"
+                         th:classappend="${iter.index == 0} ? ' gold' : (${iter.index == 1} ? ' silver' : (${iter.index == 2} ? ' bronze' : ''))"
+                         th:text="${iter.index == 0} ? '🥇' : (${iter.index == 1} ? '🥈' : (${iter.index == 2} ? '🥉' : '#' + (iter.index + 1)))">#1</div>
+                    <div class="lb-avatar">
+                        <img th:if="${user.profileImage != null and !#strings.isEmpty(user.profileImage)}"
+                             th:src="${user.profileImage}" th:alt="${user.username}"/>
+                        <span th:unless="${user.profileImage != null and !#strings.isEmpty(user.profileImage)}"
+                              th:text="${user.username.substring(0,1).toUpperCase()}">U</span>
+                    </div>
+                    <div class="lb-username" th:text="${user.username}">Username</div>
+                    <div class="lb-points">
+                        <span th:text="${@userService.countEventsForUser(user)}">0</span>
+                        <span>events</span>
+                    </div>
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

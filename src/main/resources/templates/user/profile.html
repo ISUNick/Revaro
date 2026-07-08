@@ -54,6 +54,14 @@
                         <i class="bi bi-lightning-charge-fill"></i>
                         <span th:text="${revPoints}">0</span> Rev Points
                     </div>
+                    <a th:href="@{/leaderboard}"
+                       th:if="${userRank != null}"
+                       style="display:inline-flex;align-items:center;gap:0.3rem;margin-top:0.35rem;
+                              padding:0.2rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:700;
+                              background:rgba(245,158,11,0.12);color:#f59e0b;
+                              border:1px solid rgba(245,158,11,0.3);text-decoration:none;">
+                        <i class="bi bi-trophy-fill me-1"></i>Ranked <span th:text="'#' + ${userRank}">--</span>
+                    </a>
                     <div style="font-size: 0.875rem; color: var(--color-text-muted);">
                         <strong style="color: var(--color-text);" th:text="${eventCount}">0</strong>
                         events posted

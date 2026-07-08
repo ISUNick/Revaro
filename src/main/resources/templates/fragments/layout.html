@@ -86,6 +86,9 @@
                                      padding:0.1rem 0.4rem;font-weight:700;margin-left:0.3rem;"
                               th:text="${unreadNotificationCount}">0</span>
                     </a>
+                    <a th:href="@{/leaderboard}" class="mobile-nav-item">
+                        <i class="bi bi-trophy me-2"></i>Leaderboard
+                    </a>
                     <a th:href="@{/events/create}" class="mobile-nav-item">
                         <i class="bi bi-plus-lg me-2"></i>Post Event
                     </a>
@@ -121,6 +124,9 @@
                 </div>
 
                 <div sec:authorize="isAuthenticated()" class="d-flex align-items-center gap-2">
+                    <a th:href="@{/leaderboard}" class="btn btn-nav-login me-1">
+                        <i class="bi bi-trophy me-1"></i>Leaderboard
+                    </a>
                     <a th:href="@{/events/create}" class="btn btn-nav-register">
                         <i class="bi bi-plus-lg me-1"></i>Post Event
                     </a>
