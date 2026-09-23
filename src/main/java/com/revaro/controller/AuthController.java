@@ -1,8 +1,10 @@
 package com.revaro.controller;
 
 import com.revaro.dto.RegisterDto;
+import com.revaro.security.UserDetailsImpl;
 import com.revaro.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -21,22 +23,22 @@ public class AuthController {
         this.userService = userService;
     }
 
-    // ── Login ─────────────────────────────────────────────────────────────────
-
     @GetMapping("/login")
-    public String loginPage(@RequestParam(required = false) String error,
-                            @RequestParam(required = false) String logout,
+    public String loginPage(@AuthenticationPrincipal UserDetailsImpl principal,
+                            @RequestParam(required = false) String error,
+                            @RequestParam(required = false) String expired,
                             Model model) {
+        // Covers double submits too, the first click already signed them in
+        if (principal != null) {
+            return "redirect:/";
+        }
         if (error != null) {
             model.addAttribute("errorMessage", "Invalid username or password.");
-        }
-        if (logout != null) {
-            model.addAttribute("successMessage", "You have been signed out.");
+        } else if (expired != null) {
+            model.addAttribute("infoMessage", "Your session expired, please sign in again.");
         }
         return "auth/login";
     }
-
-    // ── Register ──────────────────────────────────────────────────────────────
 
     @GetMapping("/register")
     public String registerPage(Model model) {
@@ -49,21 +51,19 @@ public class AuthController {
                            BindingResult bindingResult,
                            RedirectAttributes redirectAttributes,
                            Model model) {
-
-        // Bean validation errors
+        if (!bindingResult.hasFieldErrors("confirmPassword") && !dto.passwordsMatch()) {
+            bindingResult.rejectValue("confirmPassword", "mismatch", "Passwords don't match");
+        }
         if (bindingResult.hasErrors()) {
             return "auth/register";
         }
-
         try {
             userService.register(dto.getUsername(), dto.getEmail(), dto.getPassword());
-            redirectAttributes.addFlashAttribute("successMessage",
-                    "Account created! Sign in to get started.");
-            return "redirect:/login";
-
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
             return "auth/register";
         }
+        redirectAttributes.addFlashAttribute("successMessage", "Account created! Sign in to get started.");
+        return "redirect:/login";
     }
 }

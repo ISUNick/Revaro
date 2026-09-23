@@ -17,7 +17,15 @@ public enum TagCategory {
         this.textColor = textColor;
     }
 
-    public String getDisplayName() { return displayName; }
-    public String getBgColor() { return bgColor; }
-    public String getTextColor() { return textColor; }
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public String getBgColor() {
+        return bgColor;
+    }
+
+    public String getTextColor() {
+        return textColor;
+    }
 }

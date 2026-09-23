@@ -2,6 +2,8 @@ package com.revaro.util;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,94 +12,67 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Handles uploading and deleting images via Cloudinary.
- * Images are stored in the cloud — no local filesystem dependency.
- */
 @Component
 public class FileUploadUtil {
 
+    private static final Logger log = LoggerFactory.getLogger(FileUploadUtil.class);
     private static final Set<String> ALLOWED_TYPES = Set.of(
-            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"
-    );
-
-    private static final long MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
+    private static final long MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
     private final Cloudinary cloudinary;
 
-    public FileUploadUtil(
-            @Value("${cloudinary.cloud-name}") String cloudName,
-            @Value("${cloudinary.api-key}") String apiKey,
-            @Value("${cloudinary.api-secret}") String apiSecret) {
+    public FileUploadUtil(@Value("${cloudinary.cloud-name}") String cloudName,
+                          @Value("${cloudinary.api-key}") String apiKey,
+                          @Value("${cloudinary.api-secret}") String apiSecret) {
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
                 "cloud_name", cloudName,
                 "api_key", apiKey,
                 "api_secret", apiSecret,
-                "secure", true
-        ));
+                "secure", true));
     }
 
-    /**
-     * Uploads an image to Cloudinary and returns the secure URL.
-     */
+    // Uploads to Cloudinary and returns the image URL
     public String saveImage(MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("No file provided.");
-        }
-
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_TYPES.contains(contentType.toLowerCase())) {
-            throw new IllegalArgumentException("Invalid file type. Allowed: JPEG, PNG, WebP, GIF.");
+            throw new IllegalArgumentException("Images need to be JPEG, PNG, WebP, or GIF.");
         }
-
         if (file.getSize() > MAX_SIZE_BYTES) {
-            throw new IllegalArgumentException("File too large. Maximum size is 10 MB.");
+            throw new IllegalArgumentException("Images can be up to 10 MB.");
         }
-
-        Map uploadResult = cloudinary.uploader().upload(
-                file.getBytes(),
-                ObjectUtils.asMap(
-                        "folder", "revaro",
-                        "resource_type", "image"
-                )
-        );
-
-        return (String) uploadResult.get("secure_url");
+        Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(),
+                ObjectUtils.asMap("folder", "revaro", "resource_type", "image"));
+        return (String) result.get("secure_url");
     }
 
-    /**
-     * Deletes an image from Cloudinary by its URL.
-     */
     public void deleteImage(String imageUrl) {
-        if (imageUrl == null || imageUrl.isBlank()) return;
+        String publicId = publicIdOf(imageUrl);
+        if (publicId == null) {
+            return;
+        }
         try {
-            // Extract public_id from URL
-            // URL format: https://res.cloudinary.com/cloud/image/upload/v123/revaro/filename.jpg
-            String publicId = extractPublicId(imageUrl);
-            if (publicId != null) {
-                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
-            }
-        } catch (Exception e) {
-            System.err.println("Warning: could not delete Cloudinary image: " + imageUrl);
+            cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+        } catch (IOException | RuntimeException e) {
+            // Cleanup is best effort, a leftover image shouldn't fail the request
+            log.warn("Could not delete Cloudinary image {}", imageUrl, e);
         }
     }
 
-    private String extractPublicId(String url) {
-        try {
-            // Find "/upload/" and take everything after it, strip version if present
-            int uploadIdx = url.indexOf("/upload/");
-            if (uploadIdx == -1) return null;
-            String after = url.substring(uploadIdx + 8); // skip "/upload/"
-            // Remove version segment like "v1234567890/"
-            if (after.matches("v\\d+/.*")) {
-                after = after.substring(after.indexOf('/') + 1);
-            }
-            // Remove file extension
-            int dotIdx = after.lastIndexOf('.');
-            if (dotIdx != -1) after = after.substring(0, dotIdx);
-            return after;
-        } catch (Exception e) {
+    // https://res.cloudinary.com/<cloud>/image/upload/v123/revaro/abc.jpg -> revaro/abc
+    private String publicIdOf(String url) {
+        if (url == null) {
             return null;
         }
+        int start = url.indexOf("/upload/");
+        if (start == -1) {
+            return null;
+        }
+        String path = url.substring(start + "/upload/".length());
+        if (path.matches("v\\d+/.*")) {
+            path = path.substring(path.indexOf('/') + 1);
+        }
+        int dot = path.lastIndexOf('.');
+        return dot == -1 ? path : path.substring(0, dot);
     }
 }

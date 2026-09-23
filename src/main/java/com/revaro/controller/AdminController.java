@@ -2,23 +2,26 @@ package com.revaro.controller;
 
 import com.revaro.entity.User;
 import com.revaro.enums.ClaimStatus;
-import com.revaro.enums.Role;
-import com.revaro.entity.Report;
 import com.revaro.enums.ReportStatus;
 import com.revaro.repository.CommentRepository;
-import com.revaro.repository.ReportRepository;
 import com.revaro.repository.EventRepository;
+import com.revaro.repository.ReportRepository;
 import com.revaro.repository.UserRepository;
+import com.revaro.security.UserDetailsImpl;
+import com.revaro.service.AdminService;
 import com.revaro.service.ClaimRequestService;
 import com.revaro.service.EventService;
-import com.revaro.security.UserDetailsImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -26,6 +29,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
+    private static final int PAGE_SIZE = 20;
+    private static final int COMMENTS_PAGE_SIZE = 30;
+
+    private final AdminService adminService;
     private final ClaimRequestService claimRequestService;
     private final EventService eventService;
     private final UserRepository userRepository;
@@ -33,12 +40,14 @@ public class AdminController {
     private final CommentRepository commentRepository;
     private final ReportRepository reportRepository;
 
-    public AdminController(ClaimRequestService claimRequestService,
+    public AdminController(AdminService adminService,
+                           ClaimRequestService claimRequestService,
                            EventService eventService,
                            UserRepository userRepository,
                            EventRepository eventRepository,
                            CommentRepository commentRepository,
                            ReportRepository reportRepository) {
+        this.adminService = adminService;
         this.claimRequestService = claimRequestService;
         this.eventService = eventService;
         this.userRepository = userRepository;
@@ -46,8 +55,6 @@ public class AdminController {
         this.commentRepository = commentRepository;
         this.reportRepository = reportRepository;
     }
-
-    // ── Dashboard ─────────────────────────────────────────────────────────────
 
     @GetMapping
     public String dashboard(Model model) {
@@ -59,8 +66,6 @@ public class AdminController {
         model.addAttribute("recentClaims", claimRequestService.getPendingClaims());
         return "admin/dashboard";
     }
-
-    // ── Claims ────────────────────────────────────────────────────────────────
 
     @GetMapping("/claims")
     public String claims(Model model) {
@@ -74,13 +79,7 @@ public class AdminController {
                                @RequestParam(required = false) String adminNotes,
                                @AuthenticationPrincipal UserDetailsImpl principal,
                                RedirectAttributes redirectAttributes) {
-        try {
-            claimRequestService.reviewClaim(id, principal.getUser(), ClaimStatus.APPROVED, adminNotes);
-            redirectAttributes.addFlashAttribute("successMessage", "Claim approved.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
-        return "redirect:/admin/claims";
+        return reviewClaim(id, ClaimStatus.APPROVED, adminNotes, principal.getUser(), redirectAttributes);
     }
 
     @PostMapping("/claims/{id}/reject")
@@ -88,16 +87,8 @@ public class AdminController {
                               @RequestParam(required = false) String adminNotes,
                               @AuthenticationPrincipal UserDetailsImpl principal,
                               RedirectAttributes redirectAttributes) {
-        try {
-            claimRequestService.reviewClaim(id, principal.getUser(), ClaimStatus.REJECTED, adminNotes);
-            redirectAttributes.addFlashAttribute("successMessage", "Claim rejected.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
-        return "redirect:/admin/claims";
+        return reviewClaim(id, ClaimStatus.REJECTED, adminNotes, principal.getUser(), redirectAttributes);
     }
-
-    // ── Users ─────────────────────────────────────────────────────────────────
 
     @GetMapping("/users")
     public String users(Model model) {
@@ -109,16 +100,13 @@ public class AdminController {
     public String toggleAdmin(@PathVariable Long id,
                               @AuthenticationPrincipal UserDetailsImpl principal,
                               RedirectAttributes redirectAttributes) {
-        if (id.equals(principal.getUser().getId())) {
-            redirectAttributes.addFlashAttribute("errorMessage", "You cannot change your own admin status.");
-            return "redirect:/admin/users";
+        try {
+            User user = adminService.toggleAdmin(id, principal.getUser());
+            String change = user.isAdmin() ? " is now an admin." : " is no longer an admin.";
+            redirectAttributes.addFlashAttribute("successMessage", user.getUsername() + change);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found."));
-        user.setRole(user.getRole() == Role.ADMIN ? Role.USER : Role.ADMIN);
-        userRepository.save(user);
-        String action = user.getRole() == Role.ADMIN ? "promoted to admin" : "demoted to user";
-        redirectAttributes.addFlashAttribute("successMessage", user.getUsername() + " " + action + ".");
         return "redirect:/admin/users";
     }
 
@@ -126,27 +114,18 @@ public class AdminController {
     public String deleteUser(@PathVariable Long id,
                              @AuthenticationPrincipal UserDetailsImpl principal,
                              RedirectAttributes redirectAttributes) {
-        if (id.equals(principal.getUser().getId())) {
-            redirectAttributes.addFlashAttribute("errorMessage", "You cannot delete your own account.");
-            return "redirect:/admin/users";
-        }
         try {
-            User user = userRepository.findById(id)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found."));
-            userRepository.delete(user);
+            adminService.deleteUser(id, principal.getUser());
             redirectAttributes.addFlashAttribute("successMessage", "User deleted.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Could not delete user: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/users";
     }
 
-    // ── Events ────────────────────────────────────────────────────────────────
-
     @GetMapping("/events")
     public String events(@RequestParam(defaultValue = "0") int page, Model model) {
-        model.addAttribute("events",
-                eventRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, 20)));
+        model.addAttribute("events", eventRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, PAGE_SIZE)));
         return "admin/events";
     }
 
@@ -154,33 +133,20 @@ public class AdminController {
     public String deleteEvent(@PathVariable Long id,
                               @AuthenticationPrincipal UserDetailsImpl principal,
                               RedirectAttributes redirectAttributes) {
-        try {
-            eventService.deleteEvent(id, principal.getUser());
-            redirectAttributes.addFlashAttribute("successMessage", "Event deleted.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
+        eventService.deleteEvent(id, principal.getUser());
+        redirectAttributes.addFlashAttribute("successMessage", "Event deleted.");
         return "redirect:/admin/events";
     }
 
-    // ── Reports ───────────────────────────────────────────────────────────────
-
     @GetMapping("/reports")
     public String reports(@RequestParam(defaultValue = "0") int page,
-                          @RequestParam(required = false) String status,
+                          @RequestParam(required = false) ReportStatus status,
                           Model model) {
-        ReportStatus reportStatus = null;
-        if (status != null && !status.isBlank()) {
-            try { reportStatus = ReportStatus.valueOf(status); } catch (Exception ignored) {}
-        }
-        if (reportStatus != null) {
-            model.addAttribute("reports",
-                    reportRepository.findByStatusOrderByCreatedAtDesc(reportStatus, PageRequest.of(page, 20)));
-        } else {
-            model.addAttribute("reports",
-                    reportRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, 20)));
-        }
-        model.addAttribute("status", status);
+        PageRequest pageRequest = PageRequest.of(page, PAGE_SIZE);
+        model.addAttribute("reports", status == null
+                ? reportRepository.findAllByOrderByCreatedAtDesc(pageRequest)
+                : reportRepository.findByStatusOrderByCreatedAtDesc(status, pageRequest));
+        model.addAttribute("status", status == null ? null : status.name());
         model.addAttribute("pendingCount", reportRepository.countByStatus(ReportStatus.PENDING));
         return "admin/reports";
     }
@@ -189,111 +155,48 @@ public class AdminController {
     public String dismissReport(@PathVariable Long id,
                                 @AuthenticationPrincipal UserDetailsImpl principal,
                                 RedirectAttributes redirectAttributes) {
-        reportRepository.findById(id).ifPresent(report -> {
-            report.setStatus(ReportStatus.DISMISSED);
-            report.setReviewedBy(principal.getUser());
-            report.setReviewedAt(java.time.LocalDateTime.now());
-            reportRepository.save(report);
-        });
+        adminService.dismissReport(id, principal.getUser());
         redirectAttributes.addFlashAttribute("successMessage", "Report dismissed.");
         return "redirect:/admin/reports";
     }
 
     @PostMapping("/reports/{id}/delete-content")
-    public String deleteReportedContent(@PathVariable Long id,
-                                        @RequestParam String action,
-                                        @AuthenticationPrincipal UserDetailsImpl principal,
-                                        RedirectAttributes redirectAttributes) {
-        Report report = reportRepository.findById(id).orElse(null);
-        if (report == null) { redirectAttributes.addFlashAttribute("errorMessage", "Report not found."); return "redirect:/admin/reports"; }
-
+    public String resolveReport(@PathVariable Long id,
+                                @RequestParam String action,
+                                @AuthenticationPrincipal UserDetailsImpl principal,
+                                RedirectAttributes redirectAttributes) {
         try {
-            switch (action) {
-                case "delete-event" -> {
-                    if (report.getReportedEvent() != null)
-                        eventService.deleteEvent(report.getReportedEvent().getId(), principal.getUser());
-                }
-                case "delete-comment" -> {
-                    if (report.getReportedComment() != null)
-                        commentRepository.deleteById(report.getReportedComment().getId());
-                    report.setReportedComment(null);
-                }
-                case "delete-user" -> {
-                    User target = report.getReportedUser() != null ? report.getReportedUser()
-                            : report.getReportedComment() != null ? report.getReportedComment().getUser()
-                            : report.getReportedEvent() != null ? report.getReportedEvent().getCreator() : null;
-                    if (target != null && !target.getId().equals(principal.getUser().getId()))
-                        userRepository.delete(target);
-                    report.setReportedUser(null);
-                }
-                case "delete-user-and-event" -> {
-                    if (report.getReportedEvent() != null) {
-                        User creator = report.getReportedEvent().getCreator();
-                        eventService.deleteEvent(report.getReportedEvent().getId(), principal.getUser());
-                        if (creator != null && !creator.getId().equals(principal.getUser().getId()))
-                            userRepository.delete(creator);
-                    }
-                    report.setReportedEvent(null);
-                    report.setReportedUser(null);
-                }
-                case "delete-user-and-comment" -> {
-                    if (report.getReportedComment() != null) {
-                        User author = report.getReportedComment().getUser();
-                        commentRepository.deleteById(report.getReportedComment().getId());
-                        if (author != null && !author.getId().equals(principal.getUser().getId()))
-                            userRepository.delete(author);
-                    }
-                    report.setReportedComment(null);
-                    report.setReportedUser(null);
-                }
-            }
-            report.setStatus(ReportStatus.REVIEWED);
-            report.setReviewedBy(principal.getUser());
-            report.setReviewedAt(java.time.LocalDateTime.now());
-            reportRepository.save(report);
-            redirectAttributes.addFlashAttribute("successMessage", "Action taken successfully.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Error: " + e.getMessage());
+            adminService.resolveReport(id, action, principal.getUser());
+            redirectAttributes.addFlashAttribute("successMessage", "Done. The report is marked reviewed.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/reports";
     }
-
-    @PostMapping("/reports/{id}/review")
-    public String reviewReport(@PathVariable Long id,
-                               @RequestParam String newStatus,
-                               @AuthenticationPrincipal UserDetailsImpl principal,
-                               RedirectAttributes redirectAttributes) {
-        reportRepository.findById(id).ifPresent(report -> {
-            report.setStatus(ReportStatus.valueOf(newStatus));
-            report.setReviewedBy(principal.getUser());
-            report.setReviewedAt(java.time.LocalDateTime.now());
-            reportRepository.save(report);
-        });
-        redirectAttributes.addFlashAttribute("successMessage", "Report marked as " + newStatus.toLowerCase() + ".");
-        return "redirect:/admin/reports";
-    }
-
-    // ── Comments ──────────────────────────────────────────────────────────────
 
     @GetMapping("/comments")
     public String comments(@RequestParam(defaultValue = "0") int page, Model model) {
         model.addAttribute("comments",
-                commentRepository.findAllByOrderByCreatedAtDesc(
-                        PageRequest.of(page, 30)));
+                commentRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, COMMENTS_PAGE_SIZE)));
         return "admin/comments";
     }
 
     @PostMapping("/comments/{id}/delete")
-    public String deleteComment(@PathVariable Long id,
-                                @RequestParam(required = false) String returnUrl,
-                                RedirectAttributes redirectAttributes) {
+    public String deleteComment(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        adminService.deleteComment(id);
+        redirectAttributes.addFlashAttribute("successMessage", "Comment deleted.");
+        return "redirect:/admin/comments";
+    }
+
+    private String reviewClaim(Long id, ClaimStatus decision, String adminNotes, User admin,
+                               RedirectAttributes redirectAttributes) {
         try {
-            commentRepository.deleteById(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Comment deleted.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Could not delete comment: " + e.getMessage());
+            claimRequestService.reviewClaim(id, admin, decision, adminNotes);
+            String result = decision == ClaimStatus.APPROVED ? "Claim approved." : "Claim rejected.";
+            redirectAttributes.addFlashAttribute("successMessage", result);
+        } catch (IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
-        // Return to the event page if we have the URL, otherwise admin dashboard
-        return "redirect:" + (returnUrl != null && !returnUrl.isBlank() ? returnUrl : "/admin");
+        return "redirect:/admin/claims";
     }
 }

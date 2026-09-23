@@ -16,69 +16,47 @@ public class PasswordResetService {
 
     private final PasswordResetTokenRepository tokenRepository;
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
 
     public PasswordResetService(PasswordResetTokenRepository tokenRepository,
                                 UserRepository userRepository,
-                                PasswordEncoder passwordEncoder,
-                                EmailService emailService) {
+                                EmailService emailService,
+                                PasswordEncoder passwordEncoder) {
         this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * Initiates a password reset — creates a token and sends the email.
-     * Always returns success message even if email not found (security best practice).
-     */
-    public void initiateReset(String email) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) return; // Silent — don't reveal if email exists
-
-        User user = userOpt.get();
-
-        // Delete any existing tokens for this user
-        tokenRepository.deleteAllByUser(user);
-
-        // Create new token
-        PasswordResetToken token = new PasswordResetToken(user);
-        tokenRepository.save(token);
-
-        // Send email
-        emailService.sendPasswordReset(user.getEmail(), user.getUsername(), token.getToken());
+    // Does nothing for unknown emails so the form can't be used to find out who has an account
+    public void requestReset(String email) {
+        userRepository.findByEmailIgnoreCase(email.trim()).ifPresent(user -> {
+            tokenRepository.deleteAllByUser(user);
+            PasswordResetToken token = tokenRepository.save(new PasswordResetToken(user));
+            emailService.sendPasswordReset(user.getEmail(), user.getUsername(), token.getToken());
+        });
     }
 
-    /**
-     * Validates a reset token — returns the user if valid, empty if not.
-     */
     @Transactional(readOnly = true)
-    public Optional<User> validateToken(String token) {
-        return tokenRepository.findByToken(token)
-                .filter(PasswordResetToken::isValid)
-                .map(PasswordResetToken::getUser);
+    public boolean isValidToken(String token) {
+        return findValidToken(token).isPresent();
     }
 
-    /**
-     * Completes the reset — updates the password and invalidates the token.
-     */
+    // Returns false if the token is expired, already used, or doesn't exist
     public boolean resetPassword(String token, String newPassword) {
-        Optional<PasswordResetToken> tokenOpt = tokenRepository.findByToken(token)
-                .filter(PasswordResetToken::isValid);
-
-        if (tokenOpt.isEmpty()) return false;
-
-        PasswordResetToken resetToken = tokenOpt.get();
-        User user = resetToken.getUser();
-
+        Optional<PasswordResetToken> resetToken = findValidToken(token);
+        if (resetToken.isEmpty()) {
+            return false;
+        }
+        User user = resetToken.get().getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-
-        // Invalidate token
-        resetToken.setUsed(true);
-        tokenRepository.save(resetToken);
-
+        resetToken.get().setUsed(true);
         return true;
+    }
+
+    private Optional<PasswordResetToken> findValidToken(String token) {
+        return tokenRepository.findByToken(token).filter(PasswordResetToken::isValid);
     }
 }

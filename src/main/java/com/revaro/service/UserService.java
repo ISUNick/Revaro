@@ -1,19 +1,17 @@
 package com.revaro.service;
 
 import com.revaro.entity.User;
-import com.revaro.enums.RsvpStatus;
-import com.revaro.repository.CommentLikeRepository;
-import com.revaro.repository.CommentRepository;
-import com.revaro.repository.EventRepository;
-import com.revaro.repository.RsvpRepository;
+import com.revaro.exception.NotFoundException;
 import com.revaro.repository.UserRepository;
 import com.revaro.util.FileUploadUtil;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -23,45 +21,30 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final FileUploadUtil fileUploadUtil;
-    private final RsvpRepository rsvpRepository;
-    private final CommentLikeRepository commentLikeRepository;
-    private final CommentRepository commentRepository;
-    private final EventRepository eventRepository;
 
     public UserService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       FileUploadUtil fileUploadUtil,
-                       RsvpRepository rsvpRepository,
-                       CommentLikeRepository commentLikeRepository,
-                       CommentRepository commentRepository,
-                       EventRepository eventRepository) {
+                       FileUploadUtil fileUploadUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.fileUploadUtil = fileUploadUtil;
-        this.rsvpRepository = rsvpRepository;
-        this.commentLikeRepository = commentLikeRepository;
-        this.commentRepository = commentRepository;
-        this.eventRepository = eventRepository;
     }
-
-    // ── Register ──────────────────────────────────────────────────────────────
 
     public User register(String username, String email, String rawPassword) {
+        String normalizedEmail = email.trim().toLowerCase();
         if (userRepository.existsByUsernameIgnoreCase(username)) {
-            throw new IllegalArgumentException("Username already taken — try a different one.");
+            throw new IllegalArgumentException("That username is taken, try a different one.");
         }
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already registered.");
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new IllegalArgumentException("That email is already registered.");
         }
-        User user = new User(username, email, passwordEncoder.encode(rawPassword));
-        return userRepository.save(user);
+        return userRepository.save(new User(username, normalizedEmail, passwordEncoder.encode(rawPassword)));
     }
 
-    // ── Find ──────────────────────────────────────────────────────────────────
-
     @Transactional(readOnly = true)
-    public Optional<User> findByUsername(String username) {
-        return userRepository.findByUsername(username);
+    public User getById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
     @Transactional(readOnly = true)
@@ -69,71 +52,43 @@ public class UserService {
         return userRepository.findById(id);
     }
 
-    // ── Profile update ────────────────────────────────────────────────────────
-
-    public User updateProfile(User user, MultipartFile profileImageFile,
-                               String carYear, String carMake, String carModel,
-                               MultipartFile carImageFile) throws IOException {
-
-        if (profileImageFile != null && !profileImageFile.isEmpty()) {
-            if (user.getProfileImage() != null) {
-                fileUploadUtil.deleteImage(user.getProfileImage());
-            }
-            String filename = fileUploadUtil.saveImage(profileImageFile);
-            user.setProfileImage(filename);
-        }
-
-        user.setCarYear(carYear);
-        user.setCarMake(carMake);
-        user.setCarModel(carModel);
-
-        if (carImageFile != null && !carImageFile.isEmpty()) {
-            if (user.getCarImage() != null) {
-                fileUploadUtil.deleteImage(user.getCarImage());
-            }
-            String filename = fileUploadUtil.saveImage(carImageFile);
-            user.setCarImage(filename);
-        }
-
-        return userRepository.save(user);
-    }
-
-    // ── Rev Points ────────────────────────────────────────────────────────────
-
-    /**
-     * Rev Points calculated entirely via DB queries — no lazy collection access.
-     * 5 pts per event created + 1 per Going RSVP received + 1 per comment like received
-     */
     @Transactional(readOnly = true)
-    public long calculateRevPoints(User user) {
-        long points = 0;
-
-        // +5 per event posted
-        points += eventRepository.countByCreator(user) * 5;
-
-        // +2 per Going RSVP received on your events
-        points += rsvpRepository.countGoingRsvpsForUserEvents(user) * 2;
-
-        // +1 per Interested RSVP received on your events
-        points += rsvpRepository.countInterestedRsvpsForUserEvents(user) * 1;
-
-        // +1 per comment received on your events
-        points += commentRepository.countCommentsOnUserEvents(user) * 1;
-
-        // +1 per comment you made
-        points += commentRepository.countByUser(user) * 1;
-
-        // +1 per like received on your comments
-        points += commentLikeRepository.countLikesReceivedByUser(user) * 1;
-
-        // +1 per Going RSVP you made
-        points += rsvpRepository.countGoingRsvpsByUser(user) * 1;
-
-        return points;
+    public User getByUsername(String username) {
+        return userRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
     @Transactional(readOnly = true)
-    public long countEventsForUser(User user) {
-        return eventRepository.countByCreator(user);
+    public List<User> searchByUsername(String query, int limit) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        return userRepository.findByUsernameContainingIgnoreCaseOrderByUsernameAsc(query.trim(),
+                PageRequest.of(0, limit));
+    }
+
+    public void updateProfile(Long userId, MultipartFile profileImage, String carYear, String carMake,
+                              String carModel, MultipartFile carImage) throws IOException {
+        User user = getById(userId);
+        user.setProfileImage(replaceImage(user.getProfileImage(), profileImage));
+        user.setCarImage(replaceImage(user.getCarImage(), carImage));
+        user.setCarYear(blankToNull(carYear));
+        user.setCarMake(blankToNull(carMake));
+        user.setCarModel(blankToNull(carModel));
+        userRepository.save(user);
+    }
+
+    // Uploads first so a failed upload doesn't leave the user without their old image
+    private String replaceImage(String currentUrl, MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return currentUrl;
+        }
+        String newUrl = fileUploadUtil.saveImage(file);
+        fileUploadUtil.deleteImage(currentUrl);
+        return newUrl;
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

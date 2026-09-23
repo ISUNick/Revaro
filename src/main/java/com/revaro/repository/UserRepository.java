@@ -1,7 +1,7 @@
 package com.revaro.repository;
 
 import com.revaro.entity.User;
-import com.revaro.enums.Role;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,19 +13,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
 
-    Optional<User> findByEmail(String email);
+    Optional<User> findByUsernameIgnoreCase(String username);
 
-    boolean existsByUsername(String username);
+    Optional<User> findByEmailIgnoreCase(String email);
 
     boolean existsByUsernameIgnoreCase(String username);
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailIgnoreCase(String email);
 
-    List<User> findByRole(Role role);
-
-    List<User> findByUsernameContainingIgnoreCase(String username);
-
-    // Top users by events created — for filling user search row
-    @org.springframework.data.jpa.repository.Query("SELECT u FROM User u LEFT JOIN Event e ON e.creator = u GROUP BY u ORDER BY COUNT(e) DESC")
-    List<User> findTopByEventCount(org.springframework.data.domain.Pageable pageable);
+    List<User> findByUsernameContainingIgnoreCaseOrderByUsernameAsc(String username, Pageable pageable);
 }

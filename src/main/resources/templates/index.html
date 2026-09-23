@@ -1,454 +1,235 @@
 <!DOCTYPE html>
-<html lang="en"
-      xmlns:th="http://www.thymeleaf.org"
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Revaro – Discover Automotive Events</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" th:href="@{/css/revaro.css}"/>
+<head th:replace="~{fragments/layout :: head(~{::title}, ~{::meta})}">
+    <title>Revaro | Car Meets, Shows and Track Days Near You</title>
+    <meta name="description" content="Find car meets, car shows, cruises, and track days near you, posted by the car community."/>
 </head>
 <body>
 
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container-xl"><div th:replace="~{fragments/layout :: flash}"></div></div>
 
-<div class="container-xl">
-    <div th:replace="~{fragments/layout :: flash}"></div>
-</div>
-
-<!-- Hero -->
 <section class="page-hero">
     <div class="container-xl">
         <h1 class="mb-1">Discover Automotive Events</h1>
-        <p class="lead mb-0">Car meets, shows, track days, cruises &amp; more — all in one place.</p>
+        <p class="lead mb-0">Car meets, shows, track days, cruises and more, all in one place.</p>
     </div>
 </section>
 
-<!-- Search & Filter Bar -->
 <section class="search-filter-bar">
     <div class="container-xl">
-        <form method="get" th:action="@{/}" id="searchForm">
-
-            <!-- Main row: search + buttons -->
+        <form th:action="@{/}" method="get" id="searchForm">
             <div class="d-flex gap-2 align-items-center flex-wrap">
-
-                <!-- Search input -->
-                <div class="flex-grow-1" style="min-width:200px;">
-                    <div class="input-group">
-                        <span class="input-group-text" style="background:var(--color-surface-raised);border-color:var(--color-border);">
-                            <i class="bi bi-search" style="font-size:0.8rem;color:var(--color-text-muted);"></i>
-                        </span>
-                        <input type="text" class="form-control" name="q"
-                               th:value="${param.q}"
-                               placeholder="Search events, tags, cities, organizers..."
-                               autocomplete="off"/>
-                    </div>
+                <div class="input-group search-input">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" name="q" id="searchInput" th:value="${q}"
+                           placeholder="Search events, tags, cities..." autocomplete="off"/>
                 </div>
-
-                <!-- Filters toggle -->
-                <button type="button" onclick="toggleFilters()" id="filterToggle"
-                        class="btn btn-outline-revaro d-flex align-items-center gap-2"
-                        style="white-space:nowrap;">
-                    <i class="bi bi-sliders"></i>
-                    Filters
-                    <span th:if="${(param.type != null and !param.type.empty and param.type[0] != '') or (param.state != null and !param.state.empty and param.state[0] != '') or (param.tag != null and !param.tag.empty)}"
-                          style="background:var(--color-primary);color:#fff;border-radius:20px;font-size:0.65rem;padding:0.1rem 0.45rem;font-weight:700;">
-                        &#x2713;
-                    </span>
+                <button type="button" id="filterToggle" class="btn btn-outline-revaro filter-toggle">
+                    <i class="bi bi-sliders"></i> Filters
+                    <span th:if="${searchIn != ''}" class="filter-toggle-dot"><i class="bi bi-check"></i></span>
                 </button>
-
-                <!-- Sort dropdown -->
                 <div class="dropdown">
-                    <button type="button" class="btn btn-outline-revaro dropdown-toggle d-flex align-items-center gap-2"
-                            data-bs-toggle="dropdown" style="white-space:nowrap;">
+                    <button type="button" class="btn btn-outline-revaro dropdown-toggle sort-toggle" data-bs-toggle="dropdown">
                         <i class="bi bi-sort-down-alt"></i>
-                        <span id="sortLabel"
-                              th:text="${param.sort == null or param.sort[0] == 'relevance' ? 'Relevance' :
-                                         (param.sort[0] == 'date' ? 'Date' :
-                                         (param.sort[0] == 'newest' ? 'Newest' : 'Distance'))}">Relevance</span>
+                        <span th:switch="${sort}">
+                            <th:block th:case="'date'">Date</th:block>
+                            <th:block th:case="'newest'">Newest</th:block>
+                            <th:block th:case="'distance'">Distance</th:block>
+                            <th:block th:case="*">Relevance</th:block>
+                        </span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end"
-                        style="background:var(--color-surface);border-color:var(--color-border);min-width:160px;">
-                        <li>
-                            <button type="button" class="dropdown-item sort-option"
-                                    data-sort="relevance"
-                                    th:style="${param.sort == null or param.sort[0] == 'relevance'} ? 'color:var(--color-primary-light);font-weight:600;' : 'color:var(--color-text-muted);'">
-                                <i class="bi bi-stars me-2"></i>Relevance
-                            </button>
-                        </li>
-                        <li>
-                            <button type="button" class="dropdown-item sort-option"
-                                    data-sort="date"
-                                    th:style="${param.sort != null and param.sort[0] == 'date'} ? 'color:var(--color-primary-light);font-weight:600;' : 'color:var(--color-text-muted);'">
-                                <i class="bi bi-calendar3 me-2"></i>Date
-                            </button>
-                        </li>
-                        <li>
-                            <button type="button" class="dropdown-item sort-option"
-                                    data-sort="newest"
-                                    th:style="${param.sort != null and param.sort[0] == 'newest'} ? 'color:var(--color-primary-light);font-weight:600;' : 'color:var(--color-text-muted);'">
-                                <i class="bi bi-clock me-2"></i>Newest
-                            </button>
-                        </li>
-                        <li>
-                            <button type="button" class="dropdown-item sort-option"
-                                    data-sort="distance"
-                                    th:style="${param.sort != null and param.sort[0] == 'distance'} ? 'color:var(--color-primary-light);font-weight:600;' : 'color:var(--color-text-muted);'">
-                                <i class="bi bi-geo-alt me-2"></i>Distance
-                            </button>
-                        </li>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><button type="button" class="dropdown-item" data-sort="relevance"><i class="bi bi-stars me-2"></i>Relevance</button></li>
+                        <li><button type="button" class="dropdown-item" data-sort="date"><i class="bi bi-calendar3 me-2"></i>Date</button></li>
+                        <li><button type="button" class="dropdown-item" data-sort="newest"><i class="bi bi-clock me-2"></i>Newest</button></li>
+                        <li><button type="button" class="dropdown-item" data-sort="distance"><i class="bi bi-geo-alt me-2"></i>Distance</button></li>
                     </ul>
                 </div>
-
-                <!-- Search submit -->
-                <button type="submit" class="btn btn-primary-revaro">
-                    <i class="bi bi-search"></i>
-                </button>
-
-                <!-- Hidden sort value -->
-                <input type="hidden" name="sort" id="hiddenSort"
-                       th:value="${param.sort != null ? param.sort[0] : 'relevance'}"/>
+                <button type="submit" class="btn btn-primary-revaro" aria-label="Search"><i class="bi bi-search"></i></button>
+                <input type="hidden" name="sort" id="sortInput" th:value="${sort}"/>
             </div>
 
-            <!-- Expandable filter panel -->
-            <div id="filterPanel"
-                 th:style="${(param.type != null and !param.type.empty and param.type[0] != '') or (param.state != null and !param.state.empty and param.state[0] != '') or (param.tag != null and !param.tag.empty)} ? 'display:block;' : 'display:none;'"
-                 style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--color-border-subtle);">
+            <div id="filterPanel" class="filter-panel" th:hidden="${#strings.isEmpty(q) and searchIn == ''}">
+                <div class="filter-label">Search in:</div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <label class="filter-chip" th:classappend="${searchIn == ''} ? 'active'">
+                        <input type="radio" name="searchIn" value="" th:checked="${searchIn == ''}"/>
+                        <i class="bi bi-grid"></i>Everything
+                    </label>
+                    <label class="filter-chip" th:classappend="${searchIn == 'tags'} ? 'active'">
+                        <input type="radio" name="searchIn" value="tags" th:checked="${searchIn == 'tags'}"/>
+                        <i class="bi bi-tags"></i>Tags
+                    </label>
+                    <label class="filter-chip" th:classappend="${searchIn == 'organizer'} ? 'active'">
+                        <input type="radio" name="searchIn" value="organizer" th:checked="${searchIn == 'organizer'}"/>
+                        <i class="bi bi-person"></i>Organizer
+                    </label>
+                    <label class="filter-chip" th:classappend="${searchIn == 'location'} ? 'active'">
+                        <input type="radio" name="searchIn" value="location" th:checked="${searchIn == 'location'}"/>
+                        <i class="bi bi-geo-alt"></i>Location
+                    </label>
+                    <label class="filter-chip" th:classappend="${searchIn == 'title'} ? 'active'">
+                        <input type="radio" name="searchIn" value="title" th:checked="${searchIn == 'title'}"/>
+                        <i class="bi bi-type"></i>Event Name
+                    </label>
+                    <label class="filter-chip" th:classappend="${searchIn == 'accounts'} ? 'active'">
+                        <input type="radio" name="searchIn" value="accounts" th:checked="${searchIn == 'accounts'}"/>
+                        <i class="bi bi-people"></i>Accounts
+                    </label>
 
-                <div class="d-flex gap-3 flex-wrap align-items-start">
+                    <span class="filter-divider"></span>
 
-                    <!-- Event type -->
-                    <div style="min-width:140px;">
-                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:0.4rem;">Event Type</div>
-                        <select class="form-select form-select-sm" name="type" onchange="this.form.submit()" style="font-size:0.825rem;">
-                            <option value="">All Types</option>
-                            <option value="CAR_MEET"         th:selected="${param.type != null and param.type[0] == 'CAR_MEET'}">Car Meet</option>
-                            <option value="CAR_SHOW"         th:selected="${param.type != null and param.type[0] == 'CAR_SHOW'}">Car Show</option>
-                            <option value="CRUISE"           th:selected="${param.type != null and param.type[0] == 'CRUISE'}">Cruise</option>
-                            <option value="TRACK_DAY"        th:selected="${param.type != null and param.type[0] == 'TRACK_DAY'}">Track Day</option>
-                            <option value="DRAG_STRIP_EVENT" th:selected="${param.type != null and param.type[0] == 'DRAG_STRIP_EVENT'}">Drag Strip</option>
-                            <option value="OTHER"            th:selected="${param.type != null and param.type[0] == 'OTHER'}">Other</option>
-                        </select>
+                    <div id="distanceFilter" class="distance-filter">
+                        <i class="bi bi-geo-alt"></i>
+                        <input type="range" class="distance-slider" id="distanceSlider" min="5" max="150" step="5" value="150"/>
+                        <span id="distanceLabel">Any</span>
+                    </div>
+                    <div id="locationOffMsg" class="location-off-msg" hidden>
+                        <i class="bi bi-geo-alt-fill me-1"></i>Turn on location to filter by distance
                     </div>
 
-                    <!-- State -->
-                    <div style="min-width:100px;">
-                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:0.4rem;">State</div>
-                        <input type="text" class="form-control form-control-sm" name="state"
-                               th:value="${param.state}" placeholder="e.g. IL"
-                               style="font-size:0.825rem;max-width:90px;"/>
-                    </div>
+                    <a th:href="@{/(q=${q},sort=${sort})}" class="btn btn-sm btn-ghost ms-auto">
+                        <i class="bi bi-x me-1"></i>Clear
+                    </a>
+                </div>
 
-                    <!-- Tags -->
-                    <div th:if="${allTags != null}" style="flex:1;min-width:200px;">
-                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:0.4rem;">Tags</div>
-                        <div style="display:flex;flex-wrap:wrap;gap:0.3rem;">
-                            <label th:each="tag : ${allTags}" style="cursor:pointer;margin:0;">
-                                <input type="checkbox" name="tag" th:value="${tag.name}"
-                                       th:checked="${param.tag != null and #lists.contains(param.tag, tag.name)}"
-                                       style="display:none;" onchange="this.closest('form').submit()"/>
-                                <span th:text="${tag.name}"
-                                      th:if="${param.tag == null or !#lists.contains(param.tag, tag.name)}"
-                                      style="display:inline-flex;align-items:center;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface-raised);color:var(--color-text-muted);transition:all 0.12s;">Tag</span>
-                                <span th:text="${tag.name}"
-                                      th:unless="${param.tag == null or !#lists.contains(param.tag, tag.name)}"
-                                      th:style="'display:inline-flex;align-items:center;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + ${tag.category.textColor} + ';background:' + ${tag.category.bgColor} + ';color:' + ${tag.category.textColor} + ';transition:all 0.12s;'">Tag</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Clear -->
-                    <div style="align-self:flex-end;">
-                        <a th:href="@{/}" class="btn btn-sm"
-                           style="font-size:0.75rem;color:var(--color-text-muted);border:1px solid var(--color-border-subtle);">
-                            <i class="bi bi-x me-1"></i>Clear
-                        </a>
-                    </div>
+                <div th:if="${searchIn != ''}" class="search-scope-note">
+                    Showing results from
+                    <strong th:switch="${searchIn}">
+                        <th:block th:case="'tags'">tags only</th:block>
+                        <th:block th:case="'organizer'">organizer names only</th:block>
+                        <th:block th:case="'location'">city and state only</th:block>
+                        <th:block th:case="'accounts'">accounts only</th:block>
+                        <th:block th:case="*">event titles only</th:block>
+                    </strong>
                 </div>
             </div>
-
-            <!-- Active tag pills -->
-            <div th:if="${param.tag != null}" class="d-flex flex-wrap gap-2 mt-2">
-                <span th:each="activeTag : ${param.tag}"
-                      style="font-size:0.72rem;background:var(--color-surface-raised);border:1px solid var(--color-border);
-                             border-radius:20px;padding:0.2rem 0.6rem;color:var(--color-text-muted);"
-                      th:text="${activeTag}">Tag</span>
-            </div>
-
         </form>
     </div>
 </section>
 
-<!-- Event Feed -->
-<div class="container-xl mt-4" style="min-height:60vh;">
+<div th:if="${searchUsers != null and !searchUsers.empty}" class="container-xl mt-3">
+    <div class="section-label"><i class="bi bi-person me-1"></i>Accounts</div>
+    <div class="row g-2 mb-3">
+        <div th:each="user : ${searchUsers}" class="col-12 col-sm-6 col-md-4">
+            <a th:href="@{/profile/{u}(u=${user.username})}" class="revaro-card account-card">
+                <div th:replace="~{fragments/layout :: avatar(${user}, 'avatar-md')}"></div>
+                <div class="account-card-info">
+                    <div class="account-card-name" th:text="${user.username}">Username</div>
+                    <div class="account-card-meta">
+                        <span th:text="${userRevPoints[user.id] ?: 0} + ' Rev Points'">0 Rev Points</span>
+                        <span th:text="'Joined ' + ${#temporals.format(user.createdAt, 'MMM yyyy')}">Joined</span>
+                    </div>
+                </div>
+                <i class="bi bi-chevron-right account-card-arrow"></i>
+            </a>
+        </div>
+    </div>
+</div>
 
+<div class="container-xl mt-3 feed">
     <div class="d-flex align-items-center justify-content-between mb-3">
-        <p style="font-size:0.875rem;color:var(--color-text-muted);margin:0;">
-            <span th:if="${events != null}" th:text="${events.totalElements} + ' events found'">0 events found</span>
-        </p>
-        <a th:href="@{/events/create}" sec:authorize="isAuthenticated()"
-           class="btn btn-primary-revaro btn-sm">
+        <p class="results-count" th:if="${events != null}"
+           th:text="${events.totalElements == 1 ? '1 event found' : events.totalElements + ' events found'}">0 events found</p>
+        <a th:href="@{/events/create}" sec:authorize="isAuthenticated()" class="btn btn-primary-revaro btn-sm ms-auto">
             <i class="bi bi-plus-lg me-1"></i>Post Event
         </a>
     </div>
 
-    <!-- Cards -->
-    <div th:if="${events != null and !events.empty}">
-        <div th:each="event : ${events}"
-             class="event-card"
-             style="cursor:pointer;"
-             th:attr="data-lat=${event.latitude != null ? event.latitude : ''},
-                      data-lng=${event.longitude != null ? event.longitude : ''},
-                      data-eventdate=${event.eventDateTime != null ? event.eventDateTime : ''},
-                      data-url=@{/events/{id}(id=${event.id})}">
+    <div th:if="${events != null and !events.empty}" id="eventFeed">
+        <article th:each="event : ${events}" class="event-card"
+                 th:classappend="${event.status.name() == 'CANCELLED'} ? 'event-card-cancelled' : (${event.status.name() == 'POSTPONED'} ? 'event-card-postponed' : (${event.past} ? 'event-card-past'))"
+                 th:data-url="@{/events/{id}(id=${event.id})}"
+                 th:data-lat="${event.latitude}"
+                 th:data-lng="${event.longitude}"
+                 th:data-date="${event.eventDateTime}">
             <div class="event-card-inner">
-
-                <!-- Left: info -->
                 <div class="event-card-body">
-
-                    <!-- Status badges only — no type or tags on card -->
-                    <div class="d-flex align-items-center gap-2 flex-wrap"
-                         th:if="${(event.status != null and event.status.name() != 'ACTIVE') or
-                                   (event.eventDateTime != null and event.eventDateTime.isBefore(#temporals.createNow()))}">
-                        <span th:if="${event.status != null and event.status.name() == 'CANCELLED'}"
-                              class="event-type-badge"
-                              style="background:rgba(239,68,68,0.18);color:#f87171;border:1px solid rgba(239,68,68,0.35);">
-                            ✕ Cancelled
+                    <div class="event-card-badges" th:if="${event.status.name() != 'ACTIVE' or event.past}">
+                        <span th:if="${event.status.name() == 'CANCELLED'}" class="event-type-badge badge-cancelled">
+                            <i class="bi bi-x-circle"></i>Cancelled
                         </span>
-                        <span th:if="${event.status != null and event.status.name() == 'POSTPONED'}"
-                              class="event-type-badge"
-                              style="background:rgba(245,158,11,0.18);color:#fcd34d;border:1px solid rgba(245,158,11,0.35);">
-                            ⏸ Postponed
+                        <span th:if="${event.status.name() == 'POSTPONED'}" class="event-type-badge badge-postponed">
+                            <i class="bi bi-pause-circle"></i>Postponed
                         </span>
-                        <span th:if="${event.status != null and event.status.name() == 'ACTIVE' and event.eventDateTime != null and event.eventDateTime.isBefore(#temporals.createNow())}"
-                              class="event-type-badge"
-                              style="background:rgba(107,114,128,0.18);color:#9ca3af;border:1px solid rgba(107,114,128,0.3);">
-                            ✓ Already Happened
+                        <span th:if="${event.status.name() == 'ACTIVE' and event.past}" class="event-type-badge badge-past">
+                            <i class="bi bi-check-circle"></i>Already Happened
                         </span>
                     </div>
-
-                    <!-- Title -->
                     <h2 class="event-card-title">
-                        <a th:href="@{/events/{id}(id=${event.id})}"
-                           style="color:inherit;text-decoration:none;"
-                           th:text="${event.title}">Event Title</a>
+                        <a th:href="@{/events/{id}(id=${event.id})}" th:text="${event.title}">Event Title</a>
                     </h2>
-
-                    <!-- Organizer -->
                     <p class="event-card-organizer">
                         <i class="bi bi-person-fill me-1"></i>
-                        <a th:if="${event.creator != null}"
-                           th:href="@{/profile/{u}(u=${event.creator.username})}"
-                           style="color:var(--color-text-muted);"
-                           th:text="${event.organizerName != null ? event.organizerName : event.creator.username}">Organizer</a>
-                        <span th:unless="${event.creator != null}"
-                              th:text="${event.organizerName != null ? event.organizerName : 'Community Event'}">Organizer</span>
-                        <span th:if="${event.postedByOrganizer}" style="color:var(--color-going);margin-left:0.3rem;">
-                            <i class="bi bi-patch-check-fill"></i>
-                        </span>
+                        <a th:href="@{/profile/{u}(u=${event.creator.username})}"
+                           th:text="${event.organizerName ?: event.creator.username}">Organizer</a>
+                        <i th:if="${event.postedByOrganizer}" class="bi bi-patch-check-fill verified-icon" title="Verified organizer"></i>
                     </p>
-
-                    <!-- Meta -->
                     <div class="event-card-meta">
-                        <span th:if="${event.eventDateTime != null}" class="event-meta-item">
+                        <span class="event-meta-item">
                             <i class="bi bi-calendar3"></i>
-                            <span th:text="${#temporals.format(event.eventDateTime, 'EEE, MMM d · h:mm a')}">Date</span>
+                            <span th:text="${#temporals.format(event.eventDateTime, 'EEE, MMM d, h:mm a')}">Date</span>
                         </span>
                         <span th:if="${event.city != null}" class="event-meta-item">
                             <i class="bi bi-geo-alt-fill"></i>
-                            <span th:text="${event.city + (event.state != null ? ', ' + event.state : '')}">City</span>
-                            <span class="event-distance-label" style="color:var(--color-primary-light);font-weight:600;margin-left:0.25rem;"></span>
+                            <span th:text="${event.state != null ? event.city + ', ' + event.state : event.city}">City</span>
+                            <span class="event-distance"></span>
                         </span>
                     </div>
-
-                    <!-- RSVP -->
                     <div class="event-rsvp-row">
                         <span class="rsvp-count going">
-                            <i class="bi bi-check-circle-fill"></i>
-                            <span th:text="${event.goingCount}">0</span> Going
+                            <i class="bi bi-check-circle-fill"></i><span th:text="${event.goingCount}">0</span> Going
                         </span>
                         <span class="rsvp-count interested">
-                            <i class="bi bi-star-fill"></i>
-                            <span th:text="${event.interestedCount}">0</span> Interested
+                            <i class="bi bi-star-fill"></i><span th:text="${event.interestedCount}">0</span> Interested
                         </span>
                     </div>
-
-                    <!-- Footer -->
                     <div class="event-card-footer">
-                        <a th:href="@{/events/{id}(id=${event.id})}" class="btn-view-event">
-                            View Event <i class="bi bi-arrow-right"></i>
-                        </a>
-                        <span th:if="${event.createdAt != null}"
-                              style="font-size:0.72rem;color:var(--color-text-muted);">
-                            Posted: <span th:text="${#temporals.format(event.createdAt, 'MMM d')}">Jan 1</span>
-                        </span>
+                        <a th:href="@{/events/{id}(id=${event.id})}" class="btn-view-event">View Event <i class="bi bi-arrow-right"></i></a>
+                        <span class="event-card-posted" th:text="'Posted ' + ${#temporals.format(event.createdAt, 'MMM d')}">Posted Jan 1</span>
                     </div>
                 </div>
-
-                <!-- Right: image -->
-                <div class="event-card-image-wrap">
-                    <div th:if="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
-                         class="event-card-image-box">
-                        <img th:src="${event.featuredImage}"
-                             th:alt="${event.title}"
-                             style="width:100%;height:100%;object-fit:cover;"/>
-                    </div>
-                    <div th:unless="${event.featuredImage != null and !#strings.isEmpty(event.featuredImage)}"
-                         class="event-card-image-box event-card-image-placeholder">
-                        <i class="bi bi-car-front-fill"></i>
-                    </div>
+                <div class="event-card-image">
+                    <img th:if="${event.hasFeaturedImage()}" th:src="${event.featuredImage}" th:alt="${event.title}" loading="lazy"/>
+                    <div th:unless="${event.hasFeaturedImage()}" class="image-placeholder"><i class="bi bi-car-front-fill"></i></div>
                 </div>
-
             </div>
-        </div>
+        </article>
     </div>
 
-    <!-- Empty state -->
-    <div th:if="${events == null or events.empty}" class="empty-state">
+    <div th:if="${events != null and events.empty}" class="empty-state">
         <div class="empty-state-icon"><i class="bi bi-car-front-fill"></i></div>
         <div class="empty-state-title">No events found</div>
-        <p class="mb-3">No upcoming events match your search.</p>
-        <a th:href="@{/events/create}" sec:authorize="isAuthenticated()" class="btn btn-primary-revaro">
-            Post an Event
-        </a>
+        <p class="mb-3">Try different search terms or clear your filters.</p>
+        <a th:href="@{/}" class="btn btn-outline-revaro me-2">Clear Search</a>
+        <a th:href="@{/events/create}" sec:authorize="isAuthenticated()" class="btn btn-primary-revaro">Post an Event</a>
     </div>
 
-    <!-- Pagination -->
-    <div th:if="${events != null and events.totalPages > 1}"
-         style="padding-top:1.5rem;padding-bottom:2rem;display:flex;align-items:center;justify-content:center;gap:0.75rem;flex-wrap:wrap;">
-        <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},tag=${param.tag},sort=${param.sort},page=${events.number - 1})}"
-           th:style="${events.first} ? 'opacity:0.3;pointer-events:none;' : ''"
-           style="color:var(--color-text-muted);text-decoration:none;font-size:0.9rem;">
+    <div th:if="${events == null and (searchUsers == null or searchUsers.empty)}" class="empty-state">
+        <div class="empty-state-icon"><i class="bi bi-people"></i></div>
+        <div class="empty-state-title">No accounts found</div>
+        <p class="mb-0">Try at least two letters of a username.</p>
+    </div>
+
+    <nav th:if="${events != null and events.totalPages > 1}" class="pager" aria-label="Pages">
+        <a th:href="@{/(q=${q},searchIn=${searchIn},sort=${sort},page=${events.number - 1})}"
+           class="pager-link" th:classappend="${events.first} ? 'disabled'" aria-label="Previous page">
             <i class="bi bi-chevron-left"></i>
         </a>
         <a th:each="i : ${#numbers.sequence(0, events.totalPages - 1)}"
-           th:href="@{/(q=${param.q},state=${param.state},type=${param.type},tag=${param.tag},sort=${param.sort},page=${i})}"
-           th:text="${i + 1}"
-           th:style="${events.number == i} ? 'color:var(--color-primary-light);font-weight:700;' : 'color:var(--color-text-muted);'"
-           style="text-decoration:none;font-size:0.95rem;padding:0 0.25rem;">1</a>
-        <a th:href="@{/(q=${param.q},state=${param.state},type=${param.type},tag=${param.tag},sort=${param.sort},page=${events.number + 1})}"
-           th:style="${events.last} ? 'opacity:0.3;pointer-events:none;' : ''"
-           style="color:var(--color-text-muted);text-decoration:none;font-size:0.9rem;">
+           th:href="@{/(q=${q},searchIn=${searchIn},sort=${sort},page=${i})}"
+           class="pager-link" th:classappend="${events.number == i} ? 'active'" th:text="${i + 1}">1</a>
+        <a th:href="@{/(q=${q},searchIn=${searchIn},sort=${sort},page=${events.number + 1})}"
+           class="pager-link" th:classappend="${events.last} ? 'disabled'" aria-label="Next page">
             <i class="bi bi-chevron-right"></i>
         </a>
-    </div>
-
+    </nav>
 </div>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:replace="~{fragments/layout :: scripts}"></div>
-<script>
-(function() {
-    // Toggle filter panel
-    window.toggleFilters = function() {
-        var panel = document.getElementById('filterPanel');
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    };
-
-    // Sort dropdown
-    document.querySelectorAll('.sort-option').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.getElementById('hiddenSort').value = this.dataset.sort;
-            document.getElementById('searchForm').submit();
-        });
-    });
-
-    // Clickable cards
-    document.querySelectorAll('.event-card[data-url]').forEach(function(card) {
-        card.addEventListener('click', function(e) {
-            if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) return;
-            window.location.href = card.dataset.url;
-        });
-    });
-
-    // Distance / relevance
-    function haversine(lat1, lng1, lat2, lng2) {
-        var R = 3958.8;
-        var dLat = (lat2 - lat1) * Math.PI / 180;
-        var dLng = (lng2 - lng1) * Math.PI / 180;
-        var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLng/2) * Math.sin(dLng/2);
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-
-    function relevanceScore(card, userLat, userLng, nowMs) {
-        var eventDateStr = card.dataset.eventdate;
-        var lat = parseFloat(card.dataset.lat);
-        var lng = parseFloat(card.dataset.lng);
-        var daysUntil = 9999;
-        if (eventDateStr) {
-            var diff = (new Date(eventDateStr).getTime() - nowMs) / (1000 * 60 * 60 * 24);
-            if (diff < 0) return 999999;
-            daysUntil = Math.max(0.1, diff);
-        }
-        var miles = 999;
-        if (!isNaN(lat) && !isNaN(lng) && userLat !== null && userLng !== null) {
-            miles = Math.max(0.1, haversine(userLat, userLng, lat, lng));
-        }
-        return Math.pow(daysUntil, 0.6) * Math.pow(miles, 0.5);
-    }
-
-    function showDistances(userLat, userLng) {
-        document.querySelectorAll('.event-card').forEach(function(card) {
-            var lat = parseFloat(card.dataset.lat);
-            var lng = parseFloat(card.dataset.lng);
-            if (isNaN(lat) || isNaN(lng)) return;
-            var miles = haversine(userLat, userLng, lat, lng);
-            var el = card.querySelector('.event-distance-label');
-            if (el) el.textContent = '· ' + (miles < 1 ? '< 1 mi' : Math.round(miles) + ' mi');
-        });
-    }
-
-    function sortCards(mode, userLat, userLng) {
-        var first = document.querySelector('.event-card');
-        if (!first) return;
-        var feed = first.parentElement;
-        var cards = Array.from(feed.querySelectorAll('.event-card'));
-        var nowMs = Date.now();
-        if (mode === 'relevance') {
-            cards.sort(function(a, b) {
-                return relevanceScore(a, userLat, userLng, nowMs) - relevanceScore(b, userLat, userLng, nowMs);
-            });
-        } else if (mode === 'distance') {
-            if (userLat === null) return;
-            cards.sort(function(a, b) {
-                var aLat = parseFloat(a.dataset.lat), aLng = parseFloat(a.dataset.lng);
-                var bLat = parseFloat(b.dataset.lat), bLng = parseFloat(b.dataset.lng);
-                if (isNaN(aLat)) return 1;
-                if (isNaN(bLat)) return -1;
-                return haversine(userLat, userLng, aLat, aLng) - haversine(userLat, userLng, bLat, bLng);
-            });
-        }
-        cards.forEach(function(c) { feed.appendChild(c); });
-    }
-
-    var urlParams = new URLSearchParams(window.location.search);
-    var currentSort = urlParams.get('sort') || 'relevance';
-    var cachedLat = parseFloat(localStorage.getItem('revaro_lat'));
-    var cachedLng = parseFloat(localStorage.getItem('revaro_lng'));
-    var hasCache = !isNaN(cachedLat) && !isNaN(cachedLng);
-
-    if (hasCache) {
-        showDistances(cachedLat, cachedLng);
-        sortCards(currentSort, cachedLat, cachedLng);
-    } else if (currentSort === 'relevance') {
-        sortCards('relevance', null, null);
-    }
-
-    if (navigator.geolocation && (currentSort === 'relevance' || currentSort === 'distance')) {
-        navigator.geolocation.getCurrentPosition(function(pos) {
-            var lat = pos.coords.latitude, lng = pos.coords.longitude;
-            localStorage.setItem('revaro_lat', lat);
-            localStorage.setItem('revaro_lng', lng);
-            showDistances(lat, lng);
-            sortCards(currentSort, lat, lng);
-        }, function() {});
-    }
-})();
-</script>
+<th:block th:replace="~{fragments/layout :: scripts}"/>
+<script th:src="@{/js/home.js}"></script>
 </body>
 </html>

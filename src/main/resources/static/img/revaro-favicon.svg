@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img">
+  <title>Revaro</title>
+  <rect width="32" height="32" fill="#0a0a0a" rx="6"/>
+  <g transform="translate(4, 28) skewX(-16)">
+    <rect x="0"  y="-10" width="2"  height="10" rx="1" fill="#2a6fea" opacity="0.3"/>
+    <rect x="4"  y="-16" width="2.5" height="16" rx="1" fill="#2a6fea" opacity="0.6"/>
+    <rect x="9"  y="-22" width="3.5" height="22" rx="1" fill="#2a6fea"/>
+    <text x="14" y="0"
+          font-family="Anton, Arial Black, Impact, sans-serif"
+          font-size="26"
+          font-weight="900"
+          fill="#ffffff"
+          letter-spacing="-1">R</text>
+  </g>
+</svg>

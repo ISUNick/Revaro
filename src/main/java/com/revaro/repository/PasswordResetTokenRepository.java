@@ -12,9 +12,9 @@ import java.util.Optional;
 
 @Repository
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
+
     Optional<PasswordResetToken> findByToken(String token);
 
-    // Delete all tokens for a user when they successfully reset
     @Modifying
     @Query("DELETE FROM PasswordResetToken t WHERE t.user = :user")
     void deleteAllByUser(@Param("user") User user);

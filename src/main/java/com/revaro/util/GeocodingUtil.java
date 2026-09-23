@@ -1,53 +1,63 @@
 package com.revaro.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
-/**
- * Geocodes city+state to lat/lng using OpenStreetMap Nominatim (free, no API key).
- */
+// Looks up coordinates with OpenStreetMap's free Nominatim API so the homepage can sort by distance
 @Component
 public class GeocodingUtil {
 
-    private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-    private static final String LAT_MARKER = "\"lat\":\"";
-    private static final String LON_MARKER = "\"lon\":\"";
-    private static final String QUOTE = "\"";
+    private static final Logger log = LoggerFactory.getLogger(GeocodingUtil.class);
+    private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=";
+    private static final Duration TIMEOUT = Duration.ofSeconds(4);
 
+    private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
+    private final ObjectMapper objectMapper;
+
+    public GeocodingUtil(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    // Returns {latitude, longitude}, or null if the city is blank or the lookup fails
     public double[] geocode(String city, String state) {
+        if (city == null || city.isBlank()) {
+            return null;
+        }
+        String query = city + (state == null || state.isBlank() ? "" : ", " + state) + ", USA";
+        HttpRequest request = HttpRequest.newBuilder(
+                        URI.create(NOMINATIM_URL + URLEncoder.encode(query, StandardCharsets.UTF_8)))
+                .header("User-Agent", "Revaro/1.0 (revaromeet.com)")
+                .timeout(TIMEOUT)
+                .GET()
+                .build();
         try {
-            String q = city + (state != null && !state.isBlank() ? ", " + state : "") + ", USA";
-            String encoded = URLEncoder.encode(q, StandardCharsets.UTF_8);
-            String urlStr = NOMINATIM_URL + "?q=" + encoded + "&format=json&limit=1";
-
-            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-            conn.setRequestProperty("User-Agent", "Revaro-App/1.0");
-            conn.setConnectTimeout(4000);
-            conn.setReadTimeout(4000);
-
-            if (conn.getResponseCode() != 200) return null;
-
-            try (InputStream is = conn.getInputStream()) {
-                String body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                if (!body.contains(LAT_MARKER)) return null;
-
-                int latStart = body.indexOf(LAT_MARKER) + LAT_MARKER.length();
-                int latEnd = body.indexOf(QUOTE, latStart);
-                int lonStart = body.indexOf(LON_MARKER) + LON_MARKER.length();
-                int lonEnd = body.indexOf(QUOTE, lonStart);
-
-                double lat = Double.parseDouble(body.substring(latStart, latEnd));
-                double lon = Double.parseDouble(body.substring(lonStart, lonEnd));
-                return new double[]{lat, lon};
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                return null;
             }
-        } catch (IOException | NumberFormatException e) {
-            System.err.println("Geocoding failed for " + city + ": " + e.getMessage());
+            JsonNode results = objectMapper.readTree(response.body());
+            if (!results.isArray() || results.isEmpty()) {
+                return null;
+            }
+            JsonNode first = results.get(0);
+            return new double[]{first.get("lat").asDouble(), first.get("lon").asDouble()};
+        } catch (IOException e) {
+            log.warn("Geocoding failed for {}: {}", query, e.getMessage());
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return null;
         }
     }

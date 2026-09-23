@@ -1,38 +1,10 @@
-# Maven
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-# IntelliJ IDEA
-.idea/
-*.iws
-*.iml
-*.ipr
-
-# VS Code
-.vscode/
-
-# Spring Boot
-*.log
-logs/
-
-# Docker & environment
-.env
-uploads/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Compiled class files
 *.class
-
-# Package files
 *.jar
 *.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+.env
+uploads/
+application-prod.properties
+.idea/
+*.iml
+.DS_Store

@@ -1,102 +1,76 @@
 package com.revaro.controller;
 
 import com.revaro.dto.EventDto;
-import com.revaro.entity.Comment;
 import com.revaro.entity.Event;
 import com.revaro.entity.User;
 import com.revaro.enums.EventStatus;
 import com.revaro.enums.EventType;
 import com.revaro.enums.SourceType;
-import com.revaro.repository.CommentLikeRepository;
 import com.revaro.repository.TagRepository;
 import com.revaro.security.UserDetailsImpl;
 import com.revaro.service.CommentService;
 import com.revaro.service.EventService;
 import com.revaro.service.RsvpService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Controller
 @RequestMapping("/events")
 public class EventController {
 
+    private static final String UPLOAD_FAILED = "Image upload failed. Try a different image.";
+
     private final EventService eventService;
     private final RsvpService rsvpService;
     private final CommentService commentService;
-    private final CommentLikeRepository commentLikeRepository;
     private final TagRepository tagRepository;
 
     public EventController(EventService eventService,
                            RsvpService rsvpService,
                            CommentService commentService,
-                           CommentLikeRepository commentLikeRepository,
                            TagRepository tagRepository) {
         this.eventService = eventService;
         this.rsvpService = rsvpService;
         this.commentService = commentService;
-        this.commentLikeRepository = commentLikeRepository;
         this.tagRepository = tagRepository;
     }
 
-    private void addFormEnums(Model model) {
-        model.addAttribute("eventTypes", EventType.values());
-        model.addAttribute("sourceTypes", SourceType.values());
-        model.addAttribute("eventStatuses", EventStatus.values());
-        model.addAttribute("allTags", tagRepository.findAllByOrderByCategoryAscNameAsc());
-    }
-
-    // ── Event Detail ──────────────────────────────────────────────────────────
-
     @GetMapping("/{id}")
     public String eventDetail(@PathVariable Long id,
-                              Model model,
-                              @AuthenticationPrincipal UserDetailsImpl principal) {
-
-        Event event = eventService.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found: " + id));
-
-        List<Comment> comments = commentService.getCommentsForEvent(event);
-
+                              @AuthenticationPrincipal UserDetailsImpl principal,
+                              Model model) {
+        Event event = eventService.getById(id);
         model.addAttribute("event", event);
-        model.addAttribute("comments", comments);
+        model.addAttribute("comments", commentService.getCommentsForEvent(event));
 
         if (principal != null) {
-            User currentUser = principal.getUser();
-            model.addAttribute("currentUser", currentUser);
-
-            rsvpService.getUserRsvpStatus(currentUser, event)
-                    .ifPresent(s -> model.addAttribute("userRsvpStatus", s));
-
-            Map<Long, Boolean> likedComments = new HashMap<>();
-            for (Comment c : comments) {
-                likedComments.put(c.getId(),
-                        commentLikeRepository.existsByUserAndComment(currentUser, c));
-            }
-            model.addAttribute("likedComments", likedComments);
+            User user = principal.getUser();
+            model.addAttribute("currentUser", user);
+            model.addAttribute("likedCommentIds", commentService.getLikedCommentIds(user, event));
+            rsvpService.getUserRsvpStatus(user, event)
+                    .ifPresent(status -> model.addAttribute("userRsvpStatus", status));
         }
-
         return "event/detail";
     }
-
-    // ── Create ────────────────────────────────────────────────────────────────
 
     @GetMapping("/create")
     @PreAuthorize("isAuthenticated()")
     public String createForm(Model model) {
         model.addAttribute("eventDto", new EventDto());
-        model.addAttribute("formMode", "create");
-        addFormEnums(model);
+        addFormData(model, "create");
         return "event/form";
     }
 
@@ -107,37 +81,21 @@ public class EventController {
                               @AuthenticationPrincipal UserDetailsImpl principal,
                               RedirectAttributes redirectAttributes,
                               Model model) {
-
-        if (!dto.isPostedByOrganizer()
-                && (dto.getOrganizerName() == null || dto.getOrganizerName().isBlank())) {
-            bindingResult.rejectValue("organizerName", "required",
-                    "Organizer name is required when posting on behalf of another organizer.");
-        }
-
+        requireOrganizerName(dto, bindingResult);
         if (bindingResult.hasErrors()) {
-            model.addAttribute("formMode", "create");
-            addFormEnums(model);
+            addFormData(model, "create");
             return "event/form";
         }
-
         try {
             Event event = eventService.createEvent(dto, principal.getUser());
-            redirectAttributes.addFlashAttribute("successMessage", "Event posted successfully!");
+            redirectAttributes.addFlashAttribute("successMessage", "Event posted!");
             return "redirect:/events/" + event.getId();
         } catch (IllegalArgumentException e) {
-            model.addAttribute("errorMessage", e.getMessage());
-            model.addAttribute("formMode", "create");
-            addFormEnums(model);
-            return "event/form";
+            return showFormError(model, "create", e.getMessage());
         } catch (IOException e) {
-            model.addAttribute("errorMessage", "Image upload failed. Please try a different image.");
-            model.addAttribute("formMode", "create");
-            addFormEnums(model);
-            return "event/form";
+            return showFormError(model, "create", UPLOAD_FAILED);
         }
     }
-
-    // ── Edit ──────────────────────────────────────────────────────────────────
 
     @GetMapping("/{id}/edit")
     @PreAuthorize("isAuthenticated()")
@@ -145,21 +103,14 @@ public class EventController {
                            @AuthenticationPrincipal UserDetailsImpl principal,
                            Model model,
                            RedirectAttributes redirectAttributes) {
-
-        Event event = eventService.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found."));
-
-        User currentUser = principal.getUser();
-        if (!event.getCreator().getId().equals(currentUser.getId()) && !currentUser.isAdmin()) {
-            redirectAttributes.addFlashAttribute("errorMessage",
-                    "You don't have permission to edit this event.");
+        Event event = eventService.getById(id);
+        if (!eventService.canEdit(event, principal.getUser())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "You don't have permission to edit this event.");
             return "redirect:/events/" + id;
         }
-
         model.addAttribute("eventDto", eventService.toDto(event));
         model.addAttribute("event", event);
-        model.addAttribute("formMode", "edit");
-        addFormEnums(model);
+        addFormData(model, "edit");
         return "event/form";
     }
 
@@ -171,44 +122,29 @@ public class EventController {
                               @AuthenticationPrincipal UserDetailsImpl principal,
                               RedirectAttributes redirectAttributes,
                               Model model) {
-
-        if (!dto.isPostedByOrganizer()
-                && (dto.getOrganizerName() == null || dto.getOrganizerName().isBlank())) {
-            bindingResult.rejectValue("organizerName", "required",
-                    "Organizer name is required when posting on behalf of another organizer.");
-        }
-
+        requireOrganizerName(dto, bindingResult);
         if (bindingResult.hasErrors()) {
-            Event event = eventService.findById(id).orElseThrow();
-            model.addAttribute("event", event);
-            model.addAttribute("formMode", "edit");
-            addFormEnums(model);
+            model.addAttribute("event", eventService.getById(id));
+            addFormData(model, "edit");
             return "event/form";
         }
-
         try {
             eventService.updateEvent(id, dto, principal.getUser());
-            if (dto.isRecurring() && dto.getRecurringEndDate() != null) {
-                eventService.createRecurringFromEdit(id, dto, principal.getUser());
-                redirectAttributes.addFlashAttribute("successMessage", "Event updated and recurring series created!");
-            } else if (dto.isRecurring() && dto.getRecurringEndDate() == null) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Please set an end date for the recurring series.");
-            } else {
-                redirectAttributes.addFlashAttribute("successMessage", "Event updated successfully!");
-            }
+            int added = eventService.addDates(id, dto.getSpecificDates(), principal.getUser());
+            redirectAttributes.addFlashAttribute("successMessage",
+                    added > 0 ? "Event updated and " + added + " more dates added." : "Event updated.");
             return "redirect:/events/" + id;
-        } catch (SecurityException e) {
+        } catch (AccessDeniedException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return "redirect:/events/" + id;
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("event", eventService.getById(id));
+            return showFormError(model, "edit", e.getMessage());
         } catch (IOException e) {
-            model.addAttribute("errorMessage", "Image upload failed. Please try a different image.");
-            model.addAttribute("formMode", "edit");
-            addFormEnums(model);
-            return "event/form";
+            model.addAttribute("event", eventService.getById(id));
+            return showFormError(model, "edit", UPLOAD_FAILED);
         }
     }
-
-    // ── Delete ────────────────────────────────────────────────────────────────
 
     @PostMapping("/{id}/delete")
     @PreAuthorize("isAuthenticated()")
@@ -217,11 +153,32 @@ public class EventController {
                               RedirectAttributes redirectAttributes) {
         try {
             eventService.deleteEvent(id, principal.getUser());
-            redirectAttributes.addFlashAttribute("successMessage", "Event deleted.");
-            return "redirect:/my-events";
-        } catch (SecurityException e) {
+        } catch (AccessDeniedException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return "redirect:/events/" + id;
         }
+        redirectAttributes.addFlashAttribute("successMessage", "Event deleted.");
+        return "redirect:/my-events";
+    }
+
+    private void requireOrganizerName(EventDto dto, BindingResult bindingResult) {
+        if (!dto.isPostedByOrganizer() && (dto.getOrganizerName() == null || dto.getOrganizerName().isBlank())) {
+            bindingResult.rejectValue("organizerName", "required",
+                    "Organizer name is required when posting for someone else.");
+        }
+    }
+
+    private String showFormError(Model model, String formMode, String message) {
+        model.addAttribute("errorMessage", message);
+        addFormData(model, formMode);
+        return "event/form";
+    }
+
+    private void addFormData(Model model, String formMode) {
+        model.addAttribute("formMode", formMode);
+        model.addAttribute("eventTypes", EventType.selectable());
+        model.addAttribute("sourceTypes", SourceType.values());
+        model.addAttribute("eventStatuses", EventStatus.values());
+        model.addAttribute("allTags", tagRepository.findAllByOrderByCategoryAscNameAsc());
     }
 }

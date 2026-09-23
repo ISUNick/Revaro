@@ -1,33 +1,37 @@
 package com.revaro.enums;
 
+import java.util.Arrays;
+import java.util.List;
+
 public enum EventType {
-    CAR_MEET("Car Meet"),
-    CAR_SHOW("Car Show"),
-    CRUISE("Cruise"),
-    TRACK_DAY("Track Day"),
-    DRAG_STRIP_EVENT("Drag Strip Event"),
-    DRAG_RACING("Drag Strip Event"),   // legacy — maps to same display/badge
-    OTHER("Other");
+    CAR_MEET("Car Meet", "badge-car-meet"),
+    CAR_SHOW("Car Show", "badge-car-show"),
+    CRUISE("Cruise", "badge-cruise"),
+    TRACK_DAY("Track Day", "badge-track-day"),
+    DRAG_STRIP_EVENT("Drag Strip Event", "badge-drag-strip"),
+    // Old name for drag strip events, some rows in the database still use it
+    DRAG_RACING("Drag Strip Event", "badge-drag-strip"),
+    OTHER("Other", "badge-other");
 
     private final String displayName;
+    private final String badgeClass;
 
-    EventType(String displayName) {
+    EventType(String displayName, String badgeClass) {
         this.displayName = displayName;
+        this.badgeClass = badgeClass;
     }
 
     public String getDisplayName() {
         return displayName;
     }
 
-    /** CSS class suffix for badge coloring */
     public String getBadgeClass() {
-        return switch (this) {
-            case CAR_MEET        -> "badge-car-meet";
-            case CAR_SHOW        -> "badge-car-show";
-            case CRUISE          -> "badge-cruise";
-            case TRACK_DAY       -> "badge-track-day";
-            case DRAG_STRIP_EVENT, DRAG_RACING -> "badge-drag-strip";
-            case OTHER           -> "badge-other";
-        };
+        return badgeClass;
+    }
+
+    public static List<EventType> selectable() {
+        return Arrays.stream(values())
+                .filter(type -> type != DRAG_RACING)
+                .toList();
     }
 }

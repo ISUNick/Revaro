@@ -2,30 +2,32 @@ package com.revaro.controller;
 
 import com.revaro.entity.Event;
 import com.revaro.repository.EventRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-@Controller
+@RestController
 public class SeoController {
 
-    private final EventRepository eventRepository;
-    private static final String BASE_URL = "https://revaromeet.com";
-    private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final int MAX_SITEMAP_EVENTS = 500;
+    private static final List<String> STATIC_PAGES = List.of("/", "/leaderboard", "/about", "/contact");
 
-    public SeoController(EventRepository eventRepository) {
+    private final EventRepository eventRepository;
+    private final String baseUrl;
+
+    public SeoController(EventRepository eventRepository, @Value("${app.base-url}") String baseUrl) {
         this.eventRepository = eventRepository;
+        this.baseUrl = baseUrl;
     }
 
     @GetMapping(value = "/robots.txt", produces = MediaType.TEXT_PLAIN_VALUE)
-    @ResponseBody
     public String robots() {
         return """
                 User-agent: *
@@ -33,41 +35,29 @@ public class SeoController {
                 Disallow: /admin
                 Disallow: /profile/edit
                 Disallow: /auth/reset-password
-                
                 Sitemap: %s/sitemap.xml
-                """.formatted(BASE_URL);
+                """.formatted(baseUrl);
     }
 
     @GetMapping(value = "/sitemap.xml", produces = MediaType.APPLICATION_XML_VALUE)
-    @ResponseBody
     public String sitemap() {
-        List<Event> events = eventRepository.findUpcomingEvents(
-                LocalDateTime.now(),
-                PageRequest.of(0, 500, Sort.by("eventDateTime").ascending())
-        ).getContent();
+        List<Event> events = eventRepository.findUpcoming(LocalDateTime.now(),
+                PageRequest.of(0, MAX_SITEMAP_EVENTS, Sort.by("eventDateTime"))).getContent();
 
-        StringBuilder xml = new StringBuilder();
-        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        StringBuilder xml = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         xml.append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
-
-        // Static pages
-        for (String path : List.of("/", "/about", "/contact")) {
-            xml.append("  <url><loc>").append(BASE_URL).append(path).append("</loc></url>\n");
+        for (String page : STATIC_PAGES) {
+            xml.append("  <url><loc>").append(baseUrl).append(page).append("</loc></url>\n");
         }
-
-        // Event pages
         for (Event event : events) {
-            xml.append("  <url>\n");
-            xml.append("    <loc>").append(BASE_URL).append("/events/").append(event.getId()).append("</loc>\n");
+            xml.append("  <url><loc>").append(baseUrl).append("/events/").append(event.getId()).append("</loc>");
             if (event.getUpdatedAt() != null) {
-                xml.append("    <lastmod>").append(event.getUpdatedAt().format(ISO)).append("</lastmod>\n");
+                xml.append("<lastmod>")
+                        .append(event.getUpdatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE))
+                        .append("</lastmod>");
             }
-            xml.append("    <changefreq>weekly</changefreq>\n");
-            xml.append("    <priority>0.8</priority>\n");
-            xml.append("  </url>\n");
+            xml.append("</url>\n");
         }
-
-        xml.append("</urlset>");
-        return xml.toString();
+        return xml.append("</urlset>").toString();
     }
 }

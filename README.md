@@ -1,108 +1,53 @@
 # Revaro
 
-**Revaro** is a community-driven platform for discovering, organizing, and discussing automotive events — car meets, shows, track days, cruises, drag racing, autocross, and Cars & Coffee gatherings.
+Revaro is a web app for finding car meets, car shows, cruises, and track days. People post events, RSVP, comment, and earn Rev Points for being active. It's live at [revaromeet.com](https://revaromeet.com).
 
----
+## Stack
 
-## Tech Stack
+- Java 21, Spring Boot 3.2 (Spring MVC, Spring Security, Spring Data JPA)
+- PostgreSQL 16 with the `pg_trgm` extension for fuzzy search
+- Thymeleaf templates, Bootstrap 5, plain JavaScript
+- Cloudinary for image uploads, Resend for password reset emails
+- Deployed on Railway with Docker, DNS through Cloudflare
 
-| Layer         | Technology                          |
-|---------------|-------------------------------------|
-| Backend       | Java 21, Spring Boot 3.2            |
-| Frontend      | Thymeleaf, Bootstrap 5.3            |
-| Security      | Spring Security 6                   |
-| Persistence   | Spring Data JPA, PostgreSQL 16      |
-| Build         | Maven 3.9                           |
-| Container     | Docker, Docker Compose              |
+## Features
 
----
+- Search that handles typos (pg_trgm similarity), with filters for tags, organizer, location, event name, or accounts
+- Results sorted by a mix of how soon an event is and how far away it is, using the browser's location
+- Recurring events picked on a calendar, one event per date
+- RSVPs, comments with @mentions, likes, and notifications
+- Rev Points and a public leaderboard (all time, this week, top organizers)
+- Reporting, an admin dashboard for moderation, and event ownership claims
+- Profanity filter that censors posts and flags them for review
 
-## Quick Start (Docker)
+## Running locally
 
-**Prerequisites:** Docker & Docker Compose installed.
+1. Start Postgres and enable trigram search once:
+   ```sql
+   CREATE DATABASE revaro;
+   \c revaro
+   CREATE EXTENSION IF NOT EXISTS pg_trgm;
+   ```
+2. Copy `.env.example` to `.env` and fill in the Cloudinary and Resend keys if you want image uploads and email to work.
+3. Run it:
+   ```
+   ./mvnw spring-boot:run
+   ```
+   Then open http://localhost:8080.
 
-```bash
-# 1. Clone the repo
-git clone https://github.com/your-username/revaro.git
-cd revaro
+Or run the app and database together with `docker compose up`.
 
-# 2. Copy env file and set a secure password
-cp .env.example .env
-# Edit .env → set POSTGRES_PASSWORD
-
-# 3. Build and run
-docker compose up --build
-
-# 4. Open in browser
-open http://localhost:8080
-```
-
----
-
-## Local Development
-
-**Prerequisites:** Java 21, Maven 3.9, PostgreSQL 16
-
-```bash
-# 1. Create the database
-psql -U postgres -c "CREATE USER revaro_user WITH PASSWORD 'revaro_pass';"
-psql -U postgres -c "CREATE DATABASE revaro OWNER revaro_user;"
-
-# 2. Run the application
-./mvnw spring-boot:run
-```
-
----
-
-## Project Structure
+## Project layout
 
 ```
-src/main/java/com/revaro/
-├── config/          # Spring config (security, web MVC)
-├── controller/      # MVC controllers
-├── dto/             # Data Transfer Objects
-├── entity/          # JPA entities
-├── enums/           # Enumerations (EventType, Role, etc.)
-├── repository/      # Spring Data repositories
-├── security/        # UserDetailsService, auth helpers
-├── service/         # Business logic
-└── util/            # Utilities (file upload, etc.)
-
-src/main/resources/
-├── static/
-│   ├── css/         # revaro.css (global styles)
-│   └── js/          # Page-specific JS
-├── templates/
-│   ├── fragments/   # layout.html (base layout)
-│   ├── auth/        # login.html, register.html
-│   ├── event/       # create, edit, detail pages
-│   └── admin/       # admin dashboard pages
-└── application.properties
+src/main/java/com/revaro
+  config/       security setup and seed data for tags
+  controller/   MVC controllers plus a small JSON API for mentions
+  service/      business logic
+  repository/   Spring Data repositories, including the native search queries
+  entity/       JPA entities
+  dto/          form objects
+src/main/resources
+  templates/    Thymeleaf pages, shared pieces live in fragments/layout.html
+  static/       revaro.css and page scripts
 ```
-
----
-
-## Build Phases
-
-- [x] **Phase 1** – Project setup, Docker, layout, homepage shell
-- [ ] **Phase 2** – Database entities & repositories
-- [ ] **Phase 3** – Authentication (register, login, roles)
-- [ ] **Phase 4** – Event management (CRUD, image upload)
-- [ ] **Phase 5** – Homepage discovery (search, filter, sort)
-- [ ] **Phase 6** – RSVP & comments
-- [ ] **Phase 7** – Claim request system
-- [ ] **Phase 8** – Admin dashboard
-- [ ] **Phase 9** – Polish & deployment
-
----
-
-## Design System
-
-| Token              | Value     |
-|--------------------|-----------|
-| Primary color      | `#0b429c` |
-| Main background    | `#1a1a1d` |
-| Surface / cards    | `#2a2a2e` |
-| Raised surface     | `#333338` |
-| Going (green)      | `#2ecc71` |
-| Interested (amber) | `#f39c12` |

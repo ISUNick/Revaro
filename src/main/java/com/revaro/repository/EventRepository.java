@@ -2,8 +2,6 @@ package com.revaro.repository;
 
 import com.revaro.entity.Event;
 import com.revaro.entity.User;
-import com.revaro.enums.EventStatus;
-import com.revaro.enums.EventType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,211 +15,48 @@ import java.util.List;
 @Repository
 public interface EventRepository extends JpaRepository<Event, Long> {
 
-    List<Event> findByCreator(User creator);
-    List<Event> findByCreatorOrderByCreatedAtDesc(User creator);
-    Page<Event> findByStatus(EventStatus status, Pageable pageable);
+    // Search uses pg_trgm. The % operator matches on trigram similarity so typos still hit,
+    // and ILIKE catches plain substrings the similarity check misses.
+    String SELECT = "SELECT e.* FROM events e WHERE ";
+    String COUNT = "SELECT COUNT(*) FROM events e WHERE ";
+    String TITLE = "(e.title % :q OR e.title ILIKE '%' || :q || '%')";
+    String ORGANIZER = "(e.organizer_name % :q OR e.organizer_name ILIKE '%' || :q || '%')";
+    String LOCATION = "(e.city % :q OR e.city ILIKE '%' || :q || '%' OR e.state ILIKE :q)";
+    String TAGS = "EXISTS (SELECT 1 FROM event_tags et JOIN tags t ON t.id = et.tag_id "
+            + "WHERE et.event_id = e.id AND (t.name % :q OR t.name ILIKE '%' || :q || '%'))";
+    String ANYWHERE = TITLE + " OR " + ORGANIZER + " OR " + LOCATION + " OR " + TAGS;
+    // Upcoming events first, then past ones, each sorted by how close they are to today
+    String ORDER = " ORDER BY e.event_date_time < LOCALTIMESTAMP, "
+            + "ABS(EXTRACT(EPOCH FROM (e.event_date_time - LOCALTIMESTAMP)))";
 
-    // ── Default feed ──────────────────────────────────────────────────────────
+    @Query(value = SELECT + ANYWHERE + ORDER, countQuery = COUNT + ANYWHERE, nativeQuery = true)
+    Page<Event> search(@Param("q") String query, Pageable pageable);
+
+    @Query(value = SELECT + TITLE + ORDER, countQuery = COUNT + TITLE, nativeQuery = true)
+    Page<Event> searchTitle(@Param("q") String query, Pageable pageable);
+
+    @Query(value = SELECT + ORGANIZER + ORDER, countQuery = COUNT + ORGANIZER, nativeQuery = true)
+    Page<Event> searchOrganizer(@Param("q") String query, Pageable pageable);
+
+    @Query(value = SELECT + LOCATION + ORDER, countQuery = COUNT + LOCATION, nativeQuery = true)
+    Page<Event> searchLocation(@Param("q") String query, Pageable pageable);
+
+    @Query(value = SELECT + TAGS + ORDER, countQuery = COUNT + TAGS, nativeQuery = true)
+    Page<Event> searchTags(@Param("q") String query, Pageable pageable);
 
     @Query("SELECT e FROM Event e WHERE e.eventDateTime >= :now")
-    Page<Event> findUpcomingEvents(@Param("now") LocalDateTime now, Pageable pageable);
+    Page<Event> findUpcoming(@Param("now") LocalDateTime now, Pageable pageable);
 
-    // ── Fuzzy full-text search using pg_trgm ──────────────────────────────────
-    // Searches title, organizer, city, state, tags using trigram similarity
-    // so typos and punctuation differences still return results.
-    // Threshold: similarity > 0.1 (loose enough to catch most typos)
-
-    @Query(value = """
-            SELECT DISTINCT e.* FROM events e
-            LEFT JOIN event_tags et ON et.event_id = e.id
-            LEFT JOIN tags t ON t.id = et.tag_id
-            WHERE (
-                e.title % :q
-                OR e.organizer_name % :q
-                OR e.city % :q
-                OR e.state % :q
-                OR t.name % :q
-                OR e.title ILIKE '%' || :q || '%'
-                OR e.organizer_name ILIKE '%' || :q || '%'
-                OR e.city ILIKE '%' || :q || '%'
-                OR t.name ILIKE '%' || :q || '%'
-            )
-            """,
-            countQuery = """
-            SELECT COUNT(DISTINCT e.id) FROM events e
-            LEFT JOIN event_tags et ON et.event_id = e.id
-            LEFT JOIN tags t ON t.id = et.tag_id
-            WHERE (
-                e.title % :q OR e.organizer_name % :q OR e.city % :q
-                OR e.state % :q OR t.name % :q
-                OR e.title ILIKE '%' || :q || '%'
-                OR e.organizer_name ILIKE '%' || :q || '%'
-                OR e.city ILIKE '%' || :q || '%'
-                OR t.name ILIKE '%' || :q || '%'
-            )
-            """,
-            nativeQuery = true)
-    Page<Event> fuzzySearchEvents(@Param("q") String query, Pageable pageable);
-
-    // ── Fuzzy search WITH filters ─────────────────────────────────────────────
-
-    @Query(value = """
-            SELECT DISTINCT e.* FROM events e
-            LEFT JOIN event_tags et ON et.event_id = e.id
-            LEFT JOIN tags t ON t.id = et.tag_id
-            WHERE (
-                e.title % :q OR e.organizer_name % :q OR e.city % :q
-                OR e.state % :q OR t.name % :q
-                OR e.title ILIKE '%' || :q || '%'
-                OR e.organizer_name ILIKE '%' || :q || '%'
-                OR e.city ILIKE '%' || :q || '%'
-                OR t.name ILIKE '%' || :q || '%'
-            )
-            AND (:type IS NULL OR e.event_type = :type)
-            AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
-            AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
-            AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
-            """,
-            countQuery = """
-            SELECT COUNT(DISTINCT e.id) FROM events e
-            LEFT JOIN event_tags et ON et.event_id = e.id
-            LEFT JOIN tags t ON t.id = et.tag_id
-            WHERE (
-                e.title % :q OR e.organizer_name % :q OR e.city % :q
-                OR e.state % :q OR t.name % :q
-                OR e.title ILIKE '%' || :q || '%'
-                OR e.organizer_name ILIKE '%' || :q || '%'
-                OR e.city ILIKE '%' || :q || '%'
-                OR t.name ILIKE '%' || :q || '%'
-            )
-            AND (:type IS NULL OR e.event_type = :type)
-            AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
-            AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
-            AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
-            """,
-            nativeQuery = true)
-    Page<Event> fuzzySearchEventsFiltered(@Param("q") String query,
-                                           @Param("type") String type,
-                                           @Param("state") String state,
-                                           @Param("tag") String tag,
-                                           @Param("organizer") String organizer,
-                                           Pageable pageable);
-
-    // ── Filtered feed (no search query) ──────────────────────────────────────
-
-    @Query(value = """
-            SELECT DISTINCT e.* FROM events e
-            LEFT JOIN event_tags et ON et.event_id = e.id
-            LEFT JOIN tags t ON t.id = et.tag_id
-            WHERE e.event_date_time >= :now
-            AND (:type IS NULL OR e.event_type = :type)
-            AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
-            AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
-            AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
-            """,
-            countQuery = """
-            SELECT COUNT(DISTINCT e.id) FROM events e
-            LEFT JOIN event_tags et ON et.event_id = e.id
-            LEFT JOIN tags t ON t.id = et.tag_id
-            WHERE e.event_date_time >= :now
-            AND (:type IS NULL OR e.event_type = :type)
-            AND (:state IS NULL OR LOWER(e.state) = LOWER(:state))
-            AND (:tag IS NULL OR LOWER(t.name) = LOWER(:tag))
-            AND (:organizer IS NULL OR LOWER(e.organizer_name) ILIKE '%' || LOWER(:organizer) || '%')
-            """,
-            nativeQuery = true)
-    Page<Event> findUpcomingFiltered(@Param("now") LocalDateTime now,
-                                      @Param("type") String type,
-                                      @Param("state") String state,
-                                      @Param("tag") String tag,
-                                      @Param("organizer") String organizer,
-                                      Pageable pageable);
-
-    // ── Targeted field searches (for filter chips) ───────────────────────────
-
-    // Search only in tag names
-    @Query(value = """
-            SELECT DISTINCT e.* FROM events e
-            JOIN event_tags et ON et.event_id = e.id
-            JOIN tags t ON t.id = et.tag_id
-            WHERE (t.name % :q OR t.name ILIKE '%' || :q || '%')
-            """,
-            countQuery = """
-            SELECT COUNT(DISTINCT e.id) FROM events e
-            JOIN event_tags et ON et.event_id = e.id
-            JOIN tags t ON t.id = et.tag_id
-            WHERE (t.name % :q OR t.name ILIKE '%' || :q || '%')
-            """,
-            nativeQuery = true)
-    Page<Event> searchByTagOnly(@Param("q") String query, Pageable pageable);
-
-    // Search only organizer name
-    @Query(value = """
-            SELECT e.* FROM events e
-            WHERE (e.organizer_name % :q OR e.organizer_name ILIKE '%' || :q || '%')
-            """,
-            countQuery = """
-            SELECT COUNT(e.id) FROM events e
-            WHERE (e.organizer_name % :q OR e.organizer_name ILIKE '%' || :q || '%')
-            """,
-            nativeQuery = true)
-    Page<Event> searchByOrganizerOnly(@Param("q") String query, Pageable pageable);
-
-    // Search only city/state
-    @Query(value = """
-            SELECT e.* FROM events e
-            WHERE (e.city % :q OR e.city ILIKE '%' || :q || '%'
-                OR e.state % :q OR e.state ILIKE '%' || :q || '%')
-            """,
-            countQuery = """
-            SELECT COUNT(e.id) FROM events e
-            WHERE (e.city % :q OR e.city ILIKE '%' || :q || '%'
-                OR e.state % :q OR e.state ILIKE '%' || :q || '%')
-            """,
-            nativeQuery = true)
-    Page<Event> searchByLocationOnly(@Param("q") String query, Pageable pageable);
-
-    // Search only event title
-    @Query(value = """
-            SELECT e.* FROM events e
-            WHERE (e.title % :q OR e.title ILIKE '%' || :q || '%')
-            """,
-            countQuery = """
-            SELECT COUNT(e.id) FROM events e
-            WHERE (e.title % :q OR e.title ILIKE '%' || :q || '%')
-            """,
-            nativeQuery = true)
-    Page<Event> searchByTitleOnly(@Param("q") String query, Pageable pageable);
-
-    // ── Admin / profile ───────────────────────────────────────────────────────
+    List<Event> findByCreatorOrderByCreatedAtDesc(User creator);
 
     Page<Event> findAllByOrderByCreatedAtDesc(Pageable pageable);
-    long countByStatus(EventStatus status);
-    long countByCreator(User creator);
 
-    @Query("SELECT e FROM Event e WHERE e.status = :status AND e.eventDateTime >= :now ORDER BY e.eventDateTime ASC")
-    Page<Event> findUpcomingByStatus(@Param("status") EventStatus status,
-                                     @Param("now") LocalDateTime now,
-                                     Pageable pageable);
-
-    // Keep old JPQL methods for backwards compatibility with admin/profile pages
-    @Query("SELECT e FROM Event e WHERE e.eventType = :type AND e.eventDateTime >= :now")
-    Page<Event> findByEventType(@Param("type") EventType type,
-                                @Param("now") LocalDateTime now,
-                                Pageable pageable);
-
-    @Query("SELECT e FROM Event e WHERE LOWER(COALESCE(e.state,'')) = LOWER(:state) AND e.eventDateTime >= :now")
-    Page<Event> findByState(@Param("state") String state,
-                            @Param("now") LocalDateTime now,
-                            Pageable pageable);
+    long countByFeaturedImage(String featuredImage);
 
     @Query("""
-            SELECT DISTINCT e FROM Event e
-            JOIN e.tags t
-            WHERE e.eventDateTime >= :now
-            AND LOWER(t.name) = LOWER(:tagName)
+            SELECT e.creator.id AS userId, COUNT(e) AS total FROM Event e
+            WHERE e.createdAt >= :since
+            GROUP BY e.creator.id
             """)
-    Page<Event> findByTagName(@Param("tagName") String tagName,
-                              @Param("now") LocalDateTime now,
-                              Pageable pageable);
+    List<UserCount> countPostedByUser(@Param("since") LocalDateTime since);
 }

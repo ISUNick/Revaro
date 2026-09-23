@@ -3,12 +3,18 @@ package com.revaro.controller;
 import com.revaro.service.PasswordResetService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/auth")
 public class PasswordResetController {
+
+    private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final String INVALID_LINK = "This reset link is invalid or has expired. Request a new one below.";
 
     private final PasswordResetService passwordResetService;
 
@@ -16,30 +22,24 @@ public class PasswordResetController {
         this.passwordResetService = passwordResetService;
     }
 
-    // ── Forgot Password ───────────────────────────────────────────────────────
-
     @GetMapping("/forgot-password")
     public String forgotPasswordPage() {
         return "auth/forgot-password";
     }
 
     @PostMapping("/forgot-password")
-    public String forgotPassword(@RequestParam String email,
-                                 RedirectAttributes redirectAttributes) {
-        passwordResetService.initiateReset(email.trim().toLowerCase());
-        // Always show success — don't reveal if email exists
+    public String forgotPassword(@RequestParam String email, RedirectAttributes redirectAttributes) {
+        passwordResetService.requestReset(email);
+        // Same message either way so this can't be used to check if an email has an account
         redirectAttributes.addFlashAttribute("successMessage",
-                "If that email is registered, you'll receive a reset link shortly. Check your inbox.");
+                "If that email is registered, a reset link is on its way. Check your inbox.");
         return "redirect:/auth/forgot-password";
     }
 
-    // ── Reset Password ────────────────────────────────────────────────────────
-
     @GetMapping("/reset-password")
     public String resetPasswordPage(@RequestParam String token, Model model) {
-        if (passwordResetService.validateToken(token).isEmpty()) {
-            model.addAttribute("errorMessage",
-                    "This reset link is invalid or has expired. Please request a new one.");
+        if (!passwordResetService.isValidToken(token)) {
+            model.addAttribute("errorMessage", INVALID_LINK);
             return "auth/forgot-password";
         }
         model.addAttribute("token", token);
@@ -52,26 +52,23 @@ public class PasswordResetController {
                                 @RequestParam String confirmPassword,
                                 RedirectAttributes redirectAttributes,
                                 Model model) {
+        String error = null;
         if (!password.equals(confirmPassword)) {
-            model.addAttribute("token", token);
-            model.addAttribute("errorMessage", "Passwords do not match.");
-            return "auth/reset-password";
+            error = "Passwords don't match.";
+        } else if (password.length() < MIN_PASSWORD_LENGTH) {
+            error = "Password must be at least " + MIN_PASSWORD_LENGTH + " characters.";
         }
-        if (password.length() < 8) {
+        if (error != null) {
             model.addAttribute("token", token);
-            model.addAttribute("errorMessage", "Password must be at least 8 characters.");
+            model.addAttribute("errorMessage", error);
             return "auth/reset-password";
         }
 
-        boolean success = passwordResetService.resetPassword(token, password);
-        if (!success) {
-            model.addAttribute("errorMessage",
-                    "This reset link is invalid or has expired.");
-            return "auth/reset-password";
+        if (!passwordResetService.resetPassword(token, password)) {
+            model.addAttribute("errorMessage", INVALID_LINK);
+            return "auth/forgot-password";
         }
-
-        redirectAttributes.addFlashAttribute("successMessage",
-                "Password reset successfully! You can now log in.");
+        redirectAttributes.addFlashAttribute("successMessage", "Password reset! You can sign in now.");
         return "redirect:/login";
     }
 }

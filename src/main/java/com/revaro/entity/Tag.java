@@ -1,7 +1,14 @@
 package com.revaro.entity;
 
 import com.revaro.enums.TagCategory;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "tags")
@@ -18,7 +25,8 @@ public class Tag {
     @Column(nullable = false)
     private TagCategory category;
 
-    public Tag() {}
+    public Tag() {
+    }
 
     public Tag(String name, TagCategory category) {
         this.name = name;
@@ -27,7 +35,5 @@ public class Tag {
 
     public Long getId() { return id; }
     public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
     public TagCategory getCategory() { return category; }
-    public void setCategory(TagCategory category) { this.category = category; }
 }

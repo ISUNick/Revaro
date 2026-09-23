@@ -1,31 +1,38 @@
 package com.revaro.config;
 
 import com.revaro.security.UserDetailsServiceImpl;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
-/**
- * Full Spring Security configuration for Revaro.
- */
+import java.io.IOException;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final UserDetailsServiceImpl userDetailsService;
+    private static final int REMEMBER_ME_SECONDS = 7 * 24 * 60 * 60;
 
-    public SecurityConfig(UserDetailsServiceImpl userDetailsService) {
+    private final UserDetailsServiceImpl userDetailsService;
+    private final String rememberMeKey;
+
+    public SecurityConfig(UserDetailsServiceImpl userDetailsService,
+                          @Value("${app.remember-me-key}") String rememberMeKey) {
         this.userDetailsService = userDetailsService;
+        this.rememberMeKey = rememberMeKey;
     }
 
     @Bean
@@ -42,47 +49,48 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
-
-    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authenticationProvider(authenticationProvider())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/events", "/events/{id}").permitAll()
-                .requestMatchers("/register", "/login", "/logout").permitAll()
-                .requestMatchers("/auth/forgot-password", "/auth/reset-password").permitAll()
-                .requestMatchers("/api/users/*/preview").permitAll()
+                .requestMatchers("/css/**", "/js/**", "/img/**", "/error").permitAll()
+                .requestMatchers("/", "/events/{id}", "/leaderboard", "/about", "/contact").permitAll()
                 .requestMatchers("/sitemap.xml", "/robots.txt").permitAll()
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
-                .requestMatchers("/error").permitAll()
+                .requestMatchers("/login", "/register", "/auth/forgot-password", "/auth/reset-password").permitAll()
+                .requestMatchers("/profile/edit").authenticated()
+                .requestMatchers("/profile/{username}", "/api/users/{username}/preview").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .loginProcessingUrl("/login")
                 .defaultSuccessUrl("/", true)
-                .failureUrl("/login?error=true")
-                .usernameParameter("username")
-                .passwordParameter("password")
+                .failureUrl("/login?error")
                 .permitAll()
             )
             .logout(logout -> logout
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "POST"))
                 .logoutSuccessUrl("/")
-                .invalidateHttpSession(true)
                 .deleteCookies("JSESSIONID")
                 .permitAll()
             )
             .rememberMe(remember -> remember
-                .key("revaro-remember-me-key")
-                .tokenValiditySeconds(7 * 24 * 60 * 60)
-            );
+                .key(rememberMeKey)
+                .tokenValiditySeconds(REMEMBER_ME_SECONDS)
+            )
+            .exceptionHandling(ex -> ex.accessDeniedHandler(this::handleAccessDenied));
 
         return http.build();
+    }
+
+    // When a session expires (or the app redeploys) its CSRF token goes with it, so the next
+    // form post used to fail with a raw 403. Send people back to sign in instead.
+    private void handleAccessDenied(HttpServletRequest request, HttpServletResponse response,
+                                    AccessDeniedException e) throws IOException {
+        if (e instanceof CsrfException) {
+            response.sendRedirect(request.getContextPath() + "/login?expired");
+        } else {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+        }
     }
 }

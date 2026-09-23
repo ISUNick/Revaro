@@ -20,37 +20,27 @@ public class RsvpService {
         this.rsvpRepository = rsvpRepository;
     }
 
-    /**
-     * Toggle RSVP: if user already has this status, remove it.
-     * If they have a different status, switch it. If none, create it.
-     * Returns the new status, or null if removed.
-     */
-    public RsvpStatus toggleRsvp(User user, Event event, RsvpStatus requested) {
+    // Clicking the status you already have removes your RSVP.
+    // Returns the new status, or null if it was removed.
+    public RsvpStatus toggleRsvp(User user, Event event, RsvpStatus status) {
         Optional<Rsvp> existing = rsvpRepository.findByUserAndEvent(user, event);
-
-        if (existing.isPresent()) {
-            Rsvp rsvp = existing.get();
-            if (rsvp.getStatus() == requested) {
-                // Same status clicked again — remove it
-                rsvpRepository.delete(rsvp);
-                return null;
-            } else {
-                // Switch to new status
-                rsvp.setStatus(requested);
-                rsvpRepository.save(rsvp);
-                return requested;
-            }
-        } else {
-            // No existing RSVP — create one
-            Rsvp rsvp = new Rsvp(user, event, requested);
-            rsvpRepository.save(rsvp);
-            return requested;
+        if (existing.isEmpty()) {
+            rsvpRepository.save(new Rsvp(user, event, status));
+            return status;
         }
+
+        Rsvp rsvp = existing.get();
+        if (rsvp.getStatus() == status) {
+            rsvpRepository.delete(rsvp);
+            return null;
+        }
+        rsvp.setStatus(status);
+        rsvpRepository.save(rsvp);
+        return status;
     }
 
     @Transactional(readOnly = true)
     public Optional<RsvpStatus> getUserRsvpStatus(User user, Event event) {
-        return rsvpRepository.findByUserAndEvent(user, event)
-                .map(Rsvp::getStatus);
+        return rsvpRepository.findByUserAndEvent(user, event).map(Rsvp::getStatus);
     }
 }

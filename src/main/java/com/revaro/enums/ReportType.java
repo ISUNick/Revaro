@@ -6,6 +6,12 @@ public enum ReportType {
     USER("User Profile");
 
     private final String displayName;
-    ReportType(String displayName) { this.displayName = displayName; }
-    public String getDisplayName() { return displayName; }
+
+    ReportType(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
 }

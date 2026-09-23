@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80" role="img">
+  <title>REVaro</title>
+  <desc>Revaro wordmark logo</desc>
+  <rect width="320" height="80" fill="transparent"/>
+  <g transform="translate(18, 68) skewX(-16)">
+    <rect x="0"  y="-38" width="6"  height="38" rx="2" fill="#2a6fea" opacity="0.3"/>
+    <rect x="14" y="-62" width="10" height="62" rx="3" fill="#2a6fea" opacity="0.6"/>
+    <rect x="32" y="-85" width="14" height="85" rx="4" fill="#2a6fea"/>
+    <text x="46" y="0"
+          font-family="Anton, Arial Black, Impact, sans-serif"
+          font-size="88"
+          font-weight="900"
+          font-style="normal"
+          letter-spacing="-2">
+      <tspan fill="#ffffff">REV</tspan><tspan fill="#2a6fea">aro</tspan>
+    </text>
+  </g>
+</svg>

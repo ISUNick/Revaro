@@ -1,10 +1,6 @@
 package com.revaro.enums;
 
-/**
- * Lifecycle status of an event.
- */
 public enum EventStatus {
-
     ACTIVE("Active"),
     CANCELLED("Cancelled"),
     POSTPONED("Postponed");

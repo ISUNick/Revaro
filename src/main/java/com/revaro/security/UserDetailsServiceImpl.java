@@ -7,9 +7,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Spring Security hook — loads a User from the database by username.
- */
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
@@ -21,11 +18,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username)
-            throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)
                 .map(UserDetailsImpl::new)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("No user found with username: " + username));
+                .orElseThrow(() -> new UsernameNotFoundException("No user named " + username));
     }
 }

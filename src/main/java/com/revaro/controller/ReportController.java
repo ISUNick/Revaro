@@ -1,38 +1,36 @@
 package com.revaro.controller;
 
 import com.revaro.entity.Comment;
-import com.revaro.entity.Event;
-import com.revaro.entity.Report;
-import com.revaro.entity.User;
-import com.revaro.enums.ReportStatus;
-import com.revaro.enums.ReportType;
-import com.revaro.repository.CommentRepository;
-import com.revaro.repository.EventRepository;
-import com.revaro.repository.ReportRepository;
-import com.revaro.repository.UserRepository;
 import com.revaro.security.UserDetailsImpl;
+import com.revaro.service.CommentService;
+import com.revaro.service.EventService;
+import com.revaro.service.ReportService;
+import com.revaro.service.UserService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/report")
 public class ReportController {
 
-    private final ReportRepository reportRepository;
-    private final EventRepository eventRepository;
-    private final CommentRepository commentRepository;
-    private final UserRepository userRepository;
+    private final ReportService reportService;
+    private final EventService eventService;
+    private final CommentService commentService;
+    private final UserService userService;
 
-    public ReportController(ReportRepository reportRepository,
-                            EventRepository eventRepository,
-                            CommentRepository commentRepository,
-                            UserRepository userRepository) {
-        this.reportRepository = reportRepository;
-        this.eventRepository = eventRepository;
-        this.commentRepository = commentRepository;
-        this.userRepository = userRepository;
+    public ReportController(ReportService reportService,
+                            EventService eventService,
+                            CommentService commentService,
+                            UserService userService) {
+        this.reportService = reportService;
+        this.eventService = eventService;
+        this.commentService = commentService;
+        this.userService = userService;
     }
 
     @PostMapping("/event/{id}")
@@ -40,54 +38,20 @@ public class ReportController {
                               @RequestParam(required = false) String reason,
                               @AuthenticationPrincipal UserDetailsImpl principal,
                               RedirectAttributes redirectAttributes) {
-        if (principal == null) return "redirect:/login";
-
-        Event event = eventRepository.findById(id).orElse(null);
-        if (event == null) { redirectAttributes.addFlashAttribute("errorMessage", "Event not found."); return "redirect:/"; }
-
-        if (reportRepository.existsByReporterIdAndReportedEventId(principal.getUser().getId(), id)) {
-            redirectAttributes.addFlashAttribute("infoMessage", "You have already reported this event.");
-            return "redirect:/events/" + id;
-        }
-
-        Report report = new Report();
-        report.setReporter(principal.getUser());
-        report.setReportType(ReportType.EVENT);
-        report.setReportedEvent(event);
-        report.setReason(reason);
-        report.setStatus(ReportStatus.PENDING);
-        reportRepository.save(report);
-
-        redirectAttributes.addFlashAttribute("successMessage", "Report submitted. Our team will review it.");
+        boolean created = reportService.reportEvent(eventService.getById(id), principal.getUser(), reason);
+        flashResult(redirectAttributes, created, "this event");
         return "redirect:/events/" + id;
     }
 
     @PostMapping("/comment/{id}")
     public String reportComment(@PathVariable Long id,
                                 @RequestParam(required = false) String reason,
-                                @RequestParam(required = false) String returnUrl,
                                 @AuthenticationPrincipal UserDetailsImpl principal,
                                 RedirectAttributes redirectAttributes) {
-        if (principal == null) return "redirect:/login";
-
-        Comment comment = commentRepository.findById(id).orElse(null);
-        if (comment == null) { redirectAttributes.addFlashAttribute("errorMessage", "Comment not found."); return "redirect:/"; }
-
-        if (reportRepository.existsByReporterIdAndReportedCommentId(principal.getUser().getId(), id)) {
-            redirectAttributes.addFlashAttribute("infoMessage", "You have already reported this comment.");
-            return "redirect:" + (returnUrl != null ? returnUrl : "/");
-        }
-
-        Report report = new Report();
-        report.setReporter(principal.getUser());
-        report.setReportType(ReportType.COMMENT);
-        report.setReportedComment(comment);
-        report.setReason(reason);
-        report.setStatus(ReportStatus.PENDING);
-        reportRepository.save(report);
-
-        redirectAttributes.addFlashAttribute("successMessage", "Comment reported. Our team will review it.");
-        return "redirect:" + (returnUrl != null ? returnUrl : "/");
+        Comment comment = commentService.getById(id);
+        boolean created = reportService.reportComment(comment, principal.getUser(), reason);
+        flashResult(redirectAttributes, created, "this comment");
+        return "redirect:/events/" + comment.getEvent().getId() + "#comments";
     }
 
     @PostMapping("/user/{username}")
@@ -95,30 +59,20 @@ public class ReportController {
                              @RequestParam(required = false) String reason,
                              @AuthenticationPrincipal UserDetailsImpl principal,
                              RedirectAttributes redirectAttributes) {
-        if (principal == null) return "redirect:/login";
-
-        User target = userRepository.findByUsername(username).orElse(null);
-        if (target == null) { redirectAttributes.addFlashAttribute("errorMessage", "User not found."); return "redirect:/"; }
-
-        if (target.getId().equals(principal.getUser().getId())) {
-            redirectAttributes.addFlashAttribute("errorMessage", "You cannot report yourself.");
-            return "redirect:/profile/" + username;
+        try {
+            boolean created = reportService.reportUser(userService.getByUsername(username), principal.getUser(), reason);
+            flashResult(redirectAttributes, created, "this user");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
-
-        if (reportRepository.existsByReporterIdAndReportedUserId(principal.getUser().getId(), target.getId())) {
-            redirectAttributes.addFlashAttribute("infoMessage", "You have already reported this user.");
-            return "redirect:/profile/" + username;
-        }
-
-        Report report = new Report();
-        report.setReporter(principal.getUser());
-        report.setReportType(ReportType.USER);
-        report.setReportedUser(target);
-        report.setReason(reason);
-        report.setStatus(ReportStatus.PENDING);
-        reportRepository.save(report);
-
-        redirectAttributes.addFlashAttribute("successMessage", "User reported. Our team will review it.");
         return "redirect:/profile/" + username;
+    }
+
+    private void flashResult(RedirectAttributes redirectAttributes, boolean created, String target) {
+        if (created) {
+            redirectAttributes.addFlashAttribute("successMessage", "Report submitted. An admin will take a look.");
+        } else {
+            redirectAttributes.addFlashAttribute("infoMessage", "You already reported " + target + ".");
+        }
     }
 }

@@ -1,10 +1,6 @@
 package com.revaro.enums;
 
-/**
- * Where the event information was sourced from.
- */
 public enum SourceType {
-
     ORGANIZER_DIRECT("Organizer Direct"),
     FACEBOOK("Facebook"),
     INSTAGRAM("Instagram"),

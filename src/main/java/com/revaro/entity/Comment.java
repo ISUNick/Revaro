@@ -1,6 +1,18 @@
 package com.revaro.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -8,9 +20,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A user comment on an event.
- */
 @Entity
 @Table(name = "comments")
 public class Comment {
@@ -27,10 +36,7 @@ public class Comment {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column
     private LocalDateTime updatedAt;
-
-    // ── Relationships ─────────────────────────────────────────────────────────
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", nullable = false)
@@ -43,22 +49,19 @@ public class Comment {
     @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<CommentLike> likes = new ArrayList<>();
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
-
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
-    // ── Constructors ──────────────────────────────────────────────────────────
-
-    public Comment() {}
+    public Comment() {
+    }
 
     public Comment(User user, Event event, String content) {
         this.user = user;
@@ -66,32 +69,16 @@ public class Comment {
         this.content = content;
     }
 
-    // ── Convenience ───────────────────────────────────────────────────────────
-
     public int getLikeCount() {
         return likes.size();
     }
 
-    // ── Getters & Setters ─────────────────────────────────────────────────────
-
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
-
     public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
     public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-
     public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
-
     public Event getEvent() { return event; }
-    public void setEvent(Event event) { this.event = event; }
-
     public List<CommentLike> getLikes() { return likes; }
-    public void setLikes(List<CommentLike> likes) { this.likes = likes; }
 }

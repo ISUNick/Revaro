@@ -1,63 +1,53 @@
 package com.revaro.controller;
 
+import com.revaro.entity.Event;
 import com.revaro.entity.User;
-import com.revaro.repository.EventRepository;
-import com.revaro.repository.UserRepository;
-import java.util.List;
 import com.revaro.security.UserDetailsImpl;
 import com.revaro.service.EventService;
+import com.revaro.service.RevPointsService;
 import com.revaro.service.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.io.IOException;
+import java.util.List;
 
 @Controller
 public class ProfileController {
 
     private final UserService userService;
-    private final EventRepository eventRepository;
     private final EventService eventService;
-    private final UserRepository userRepository;
+    private final RevPointsService revPointsService;
 
-    public ProfileController(UserService userService, EventRepository eventRepository, EventService eventService, UserRepository userRepository) {
+    public ProfileController(UserService userService,
+                             EventService eventService,
+                             RevPointsService revPointsService) {
         this.userService = userService;
-        this.eventRepository = eventRepository;
         this.eventService = eventService;
-        this.userRepository = userRepository;
+        this.revPointsService = revPointsService;
     }
-
-    // ── Public profile ────────────────────────────────────────────────────────
 
     @GetMapping("/profile/{username}")
-    public String publicProfile(@PathVariable String username, Model model) {
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found."));
+    public String profile(@PathVariable String username, Model model) {
+        User user = userService.getByUsername(username);
+        List<Event> events = eventService.getEventsByCreator(user);
+        RevPointsService.Standing standing = revPointsService.standingOf(user);
 
         model.addAttribute("profileUser", user);
-        long revPoints = userService.calculateRevPoints(user);
-        model.addAttribute("revPoints", revPoints);
-
-        // Calculate rank among all users
-        try {
-            List<User> allUsers = userRepository.findAll();
-            final long pts = revPoints;
-            long rank = allUsers.stream()
-                    .filter(u -> userService.calculateRevPoints(u) > pts)
-                    .count() + 1;
-            model.addAttribute("userRank", rank);
-        } catch (Exception e) {
-            model.addAttribute("userRank", null);
-        }
-        model.addAttribute("eventCount", userService.countEventsForUser(user));
-        model.addAttribute("profileEvents", eventService.findByCreatorHydrated(user));
+        model.addAttribute("profileEvents", events);
+        model.addAttribute("eventCount", events.size());
+        model.addAttribute("revPoints", standing.points());
+        model.addAttribute("userRank", standing.rank());
         return "user/profile";
     }
-
-    // ── Own profile (redirect to username route) ──────────────────────────────
 
     @GetMapping("/profile")
     @PreAuthorize("isAuthenticated()")
@@ -65,14 +55,10 @@ public class ProfileController {
         return "redirect:/profile/" + principal.getUsername();
     }
 
-    // ── Edit profile ──────────────────────────────────────────────────────────
-
     @GetMapping("/profile/edit")
     @PreAuthorize("isAuthenticated()")
     public String editProfile(@AuthenticationPrincipal UserDetailsImpl principal, Model model) {
-        User user = userService.findById(principal.getUser().getId())
-                .orElseThrow();
-        model.addAttribute("user", user);
+        model.addAttribute("user", userService.getById(principal.getId()));
         return "user/edit-profile";
     }
 
@@ -86,22 +72,20 @@ public class ProfileController {
                               @RequestParam(required = false) MultipartFile carImageFile,
                               RedirectAttributes redirectAttributes) {
         try {
-            User user = userService.findById(principal.getUser().getId()).orElseThrow();
-            userService.updateProfile(user, profileImageFile, carYear, carMake, carModel, carImageFile);
+            userService.updateProfile(principal.getId(), profileImageFile, carYear, carMake, carModel, carImageFile);
             redirectAttributes.addFlashAttribute("successMessage", "Profile updated!");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Could not update profile: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (IOException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Image upload failed. Try a different image.");
         }
         return "redirect:/profile/" + principal.getUsername();
     }
 
-    // ── My events ─────────────────────────────────────────────────────────────
-
     @GetMapping("/my-events")
     @PreAuthorize("isAuthenticated()")
     public String myEvents(@AuthenticationPrincipal UserDetailsImpl principal, Model model) {
-        User user = userService.findById(principal.getUser().getId()).orElseThrow();
-        model.addAttribute("events", eventService.findByCreatorHydrated(user));
+        model.addAttribute("events", eventService.getEventsByCreator(principal.getUser()));
         return "user/my-events";
     }
 }
