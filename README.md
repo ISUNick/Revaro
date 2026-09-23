@@ -12,22 +12,22 @@ Revaro is a platform for finding and posting car meets, shows, track days, cruis
 
 ## Project structure
 
--src/main/java/com/revaro/
--config/ security and web MVC config
--controller/ MVC controllers
--dto/ form/request objects
--entity/ JPA entities
--enums/ EventType, Role, etc.
--repository/ Spring Data repositories
--security/ UserDetailsService and auth helpers
--service/ business logic
--util/ file upload and other helpers
+- src/main/java/com/revaro/
+- config/ security and web MVC config
+- controller/ MVC controllers
+- dto/ form/request objects
+- entity/ JPA entities
+- enums/ EventType, Role, etc.
+- repository/ Spring Data repositories
+- security/ UserDetailsService and auth helpers
+- service/ business logic
+- util/ file upload and other helpers
 
--src/main/resources/
--static/css/ revaro.css
--static/js/ page scripts
--templates/
--fragments/ shared layout
--auth/ login, register
--event/ create, edit, detail
--admin/ admin dashboard
+- src/main/resources/
+- static/css/ revaro.css
+- static/js/ page scripts
+- templates/
+- fragments/ shared layout
+- auth/ login, register
+- event/ create, edit, detail
+- admin/ admin dashboard
